@@ -1,0 +1,159 @@
+import { useAuth } from '@/lib/auth';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { Copy, Shield, Building2, Wallet, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+
+export default function Settings() {
+  const { user } = useAuth();
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const maskAccountNumber = (num: string) => {
+    if (!num) return '';
+    return '••••' + num.slice(-4);
+  };
+
+  return (
+    <AppLayout>
+      <div className="animate-fade-in max-w-3xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="page-header">Settings</h1>
+          <p className="page-description mt-1">
+            Manage your account settings and security
+          </p>
+        </div>
+
+        {/* Bank Details Section */}
+        <div className="stat-card mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-medium">Bank Account Details</h2>
+              <p className="text-sm text-muted-foreground">Read-only for security</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="text-sm text-muted-foreground">Account Holder Name</p>
+                <p className="font-medium mt-0.5">{user?.account_holder_name}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="text-sm text-muted-foreground">Account Number</p>
+                <p className="font-medium mt-0.5">{maskAccountNumber(user?.account_number || '')}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-sm text-muted-foreground">IFSC Code</p>
+                <p className="font-medium mt-0.5">{user?.ifsc_code}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Wallet Section */}
+        <div className="stat-card mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-medium">TRON Wallet</h2>
+              <p className="text-sm text-muted-foreground">Your USDT receiving address</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Wallet Address</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm font-mono bg-muted px-3 py-2.5 rounded-md break-all">
+                  {user?.tron_wallet_address}
+                </code>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copyToClipboard(user?.tron_wallet_address || '')}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Section */}
+        <div className="stat-card mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-medium">Security</h2>
+              <p className="text-sm text-muted-foreground">Account protection information</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="text-sm text-muted-foreground">Authentication Method</p>
+                <p className="font-medium mt-0.5">Bank-based OTP</p>
+              </div>
+              <span className="text-xs bg-muted px-2 py-1 rounded">Enabled</span>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="text-sm text-muted-foreground">Private Key Storage</p>
+                <p className="font-medium mt-0.5">Encrypted</p>
+              </div>
+              <span className="text-xs bg-muted px-2 py-1 rounded">Secured</span>
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Session Status</p>
+                <p className="font-medium mt-0.5">Active</p>
+              </div>
+              <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">Online</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Compliance Notice */}
+        <div className="p-4 bg-muted rounded-lg flex gap-3">
+          <AlertTriangle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Compliance Notice</h3>
+            <p className="text-sm text-muted-foreground">
+              Bank details cannot be changed for regulatory compliance and security reasons. 
+              If you need to update your bank information, please contact support with proper 
+              verification documents.
+            </p>
+          </div>
+        </div>
+
+        {/* Account Info */}
+        <div className="mt-8 pt-6 border-t border-border">
+          <p className="text-xs text-muted-foreground text-center">
+            Account ID: {user?.id} · Created at: {new Date().toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

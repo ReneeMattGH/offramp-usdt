@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Crypto Payroll Design System - Black, White, Grey Only */
+
+@layer base {
+  :root {
+    /* Core palette - pure monochrome */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    /* Primary - Pure Black */
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Grey */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+
+    /* Muted - Grey tones */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Accent - Subtle grey */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 0%;
+
+    /* Destructive - Dark grey for errors */
+    --destructive: 0 0% 20%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success state */
+    --success: 0 0% 20%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+
+    --radius: 0.375rem;
+
+    /* Sidebar - slightly off-white */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 0% 0%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 92%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 0%;
+
+    /* Custom tokens */
+    --grey-50: 0 0% 98%;
+    --grey-100: 0 0% 96%;
+    --grey-200: 0 0% 90%;
+    --grey-300: 0 0% 83%;
+    --grey-400: 0 0% 64%;
+    --grey-500: 0 0% 45%;
+    --grey-600: 0 0% 32%;
+    --grey-700: 0 0% 25%;
+    --grey-800: 0 0% 15%;
+    --grey-900: 0 0% 9%;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 0% 80%;
+    --destructive-foreground: 0 0% 0%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 100%;
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .card-elevated {
+    @apply bg-card border border-border rounded-lg shadow-sm;
+  }
+
+  .stat-card {
+    @apply bg-card border border-border rounded-lg p-6;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md transition-colors;
+  }
+
+  .nav-link-active {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .nav-link-inactive {
+    @apply text-muted-foreground hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .page-header {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  .page-description {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table th {
+    @apply text-left text-xs font-medium text-muted-foreground uppercase tracking-wider py-3 px-4 border-b;
+  }
+
+  .data-table td {
+    @apply py-4 px-4 border-b border-border;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-pending {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .status-processing {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-completed {
+    @apply bg-primary text-primary-foreground;
+  }
+}

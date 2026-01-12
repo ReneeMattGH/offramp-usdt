@@ -37,10 +37,18 @@ export default function Dashboard() {
         .limit(5);
       
       if (data) {
-        setRecentActivity(data.map(item => ({
+        const dbActivity = data.map(item => ({
           ...item,
           type: item.type as 'deposit' | 'salary' | 'withdrawal',
-        })));
+        }));
+
+        // Demo: Merge dummy transactions
+        const dummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
+        const allActivity = [...dummyTxs, ...dbActivity]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5);
+          
+        setRecentActivity(allActivity);
       }
       setActivityLoading(false);
     };
@@ -201,7 +209,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="font-semibold">Bank Account</h3>
-                <p className="text-xs text-muted-foreground">Linked for withdrawals</p>
+                <p className="text-xs text-muted-foreground">Linked for exchanges</p>
               </div>
             </div>
             
@@ -302,7 +310,9 @@ export default function Dashboard() {
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
-                        <p className="font-medium capitalize">{activity.type}</p>
+                        <p className="font-medium capitalize">
+                          {activity.type === 'withdrawal' ? 'exchange' : activity.type}
+                        </p>
                         <p className="text-xs text-muted-foreground">{formatTimeAgo(activity.created_at)}</p>
                       </div>
                     </div>
@@ -351,7 +361,7 @@ export default function Dashboard() {
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-medium">Withdraw to Bank</h4>
+                    <h4 className="font-medium">Exchange to Bank</h4>
                     <p className="text-sm text-muted-foreground">Convert USDT to INR</p>
                   </div>
                 </div>

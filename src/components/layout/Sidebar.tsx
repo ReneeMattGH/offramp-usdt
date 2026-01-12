@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Deposit', href: '/deposit', icon: ArrowDownToLine },
-  { name: 'Withdraw', href: '/withdraw', icon: ArrowUpFromLine },
+  { name: 'Exchange', href: '/withdraw', icon: ArrowUpFromLine },
   { name: 'Transactions', href: '/transactions', icon: Receipt },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

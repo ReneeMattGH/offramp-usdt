@@ -55,8 +55,14 @@ export default function Transactions() {
         type: item.type as 'deposit' | 'salary' | 'withdrawal',
         status: item.status as 'pending' | 'processing' | 'completed' | 'failed',
       }));
+
+      // Demo: Merge dummy transactions
+      const dummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
+      const allTransactions = [...dummyTxs, ...typedData].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
       
-      setTransactions(typedData);
+      setTransactions(allTransactions);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -253,10 +259,10 @@ export default function Transactions() {
               <div className="p-1.5 rounded-lg bg-orange-500/10">
                 <ArrowUpRight className="w-4 h-4 text-orange-600" />
               </div>
-              <span className="text-xs text-muted-foreground">Total Withdrawals</span>
+              <span className="text-xs text-muted-foreground">Total Exchanges</span>
             </div>
             <p className="text-xl font-bold">{totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p className="text-xs text-muted-foreground">USDT withdrawn</p>
+            <p className="text-xs text-muted-foreground">USDT exchanged</p>
           </div>
           
           <div className="rounded-xl border border-border bg-card p-4">
@@ -321,7 +327,9 @@ export default function Transactions() {
                               <div className={cn('p-2 rounded-lg', getTypeStyle(tx.type))}>
                                 {getTypeIcon(tx.type)}
                               </div>
-                              <span className="font-medium capitalize">{tx.type}</span>
+                              <span className="font-medium capitalize">
+                                {tx.type === 'withdrawal' ? 'exchange' : tx.type}
+                              </span>
                             </div>
                           </td>
                           <td>

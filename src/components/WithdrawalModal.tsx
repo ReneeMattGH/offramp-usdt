@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +45,15 @@ export function WithdrawalModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  useEffect(() => {
+    if (bank?.code === 'ICICI' && isOpen) {
+      setAccountHolderName('James');
+      setAccountNumber('123456789');
+      setConfirmAccountNumber('123456789');
+      setIfscCode('ICIC2345678');
+    }
+  }, [bank, isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -61,7 +70,7 @@ export function WithdrawalModal({
     }
 
     if (withdrawAmount < 10) {
-      toast.error('Minimum withdrawal amount is 10 USDT');
+      toast.error('Minimum exchange amount is 10 USDT');
       return;
     }
 
@@ -86,8 +95,9 @@ export function WithdrawalModal({
     }
 
     // Validate IFSC code format (11 characters, first 4 letters, 5th is 0, last 6 alphanumeric)
+    // Allow specific dummy IFSC for ICICI demo
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscRegex.test(ifscCode.toUpperCase())) {
+    if (ifscCode !== 'ICIC2345678' && !ifscRegex.test(ifscCode.toUpperCase())) {
       toast.error('Please enter a valid IFSC code');
       return;
     }
@@ -95,42 +105,68 @@ export function WithdrawalModal({
     setIsSubmitting(true);
 
     try {
-      // Create withdrawal record
-      const { error: withdrawalError } = await supabase
-        .from('withdrawals')
-        .insert({
-          user_id: userId,
-          amount: withdrawAmount,
-          status: 'pending',
-          bank_account_number: accountNumber,
-          ifsc_code: ifscCode.toUpperCase(),
-          bank_code: bank?.code,
-        });
+      // Check if this is the dummy demo transaction
+      const isDummyDemo = ifscCode === 'ICIC2345678';
 
-      if (withdrawalError) throw withdrawalError;
+      if (!isDummyDemo) {
+        // Create withdrawal record
+        const { error: withdrawalError } = await supabase
+          .from('withdrawals')
+          .insert({
+            user_id: userId,
+            amount: withdrawAmount,
+            status: 'pending',
+            bank_account_number: accountNumber,
+            ifsc_code: ifscCode.toUpperCase(),
+            bank_code: bank?.code,
+          });
 
-      // Create transaction record
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
+        if (withdrawalError) throw withdrawalError;
+
+        // Create transaction record
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            type: 'withdrawal',
+            amount: withdrawAmount,
+            status: 'pending',
+          });
+
+        if (transactionError) throw transactionError;
+      } else {
+        // Simulate network delay for demo
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Save dummy transaction to localStorage
+        const newDummyTx = {
+          id: `dummy-${Date.now()}`,
           type: 'withdrawal',
           amount: withdrawAmount,
-          status: 'pending',
-        });
-
-      if (transactionError) throw transactionError;
+          status: 'pending', // Initial status
+          tx_hash: null,
+          created_at: new Date().toISOString(),
+          is_dummy: true
+        };
+        
+        const existingDummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
+        localStorage.setItem('dummy_transactions', JSON.stringify([newDummyTx, ...existingDummyTxs]));
+      }
 
       setIsSuccess(true);
-      toast.success('Withdrawal request submitted successfully');
+      toast.success('Exchange request submitted successfully');
+
+      // Update dummy spent
+      const currentSpent = parseFloat(localStorage.getItem('dummy_spent') || '0');
+      localStorage.setItem('dummy_spent', (currentSpent + withdrawAmount).toString());
 
       setTimeout(() => {
         onSuccess();
         handleClose();
       }, 2000);
     } catch (err: any) {
-      console.error('Withdrawal error:', err);
-      toast.error(err.message || 'Failed to submit withdrawal');
+      console.error('Exchange error:', err);
+      toast.error(err.message || 'Failed to submit exchange');
     } finally {
       setIsSubmitting(false);
     }
@@ -158,19 +194,19 @@ export function WithdrawalModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="w-5 h-5" />
-            Withdraw to {bank.name}
+            Exchange to {bank.name}
           </DialogTitle>
           <DialogDescription>
-            Enter your bank account details and withdrawal amount
+            Enter your bank account details and exchange amount
           </DialogDescription>
         </DialogHeader>
 
         {isSuccess ? (
           <div className="py-8 text-center">
             <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <h3 className="text-lg font-medium mb-2">Withdrawal Submitted!</h3>
+            <h3 className="text-lg font-medium mb-2">Exchange Submitted!</h3>
             <p className="text-sm text-muted-foreground">
-              Your withdrawal is being processed. Funds will arrive in {bank.processing_time}.
+              Your exchange is being processed. Funds will arrive in {bank.processing_time}.
             </p>
           </div>
         ) : (
@@ -293,7 +329,7 @@ export function WithdrawalModal({
                     Processing...
                   </>
                 ) : (
-                  'Withdraw'
+                  'Exchange'
                 )}
               </Button>
             </div>

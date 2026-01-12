@@ -40,9 +40,9 @@ export default function Withdraw() {
       <div className="animate-fade-in max-w-2xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="page-header">Withdraw to Bank</h1>
+          <h1 className="page-header">Exchange to Bank</h1>
           <p className="page-description mt-1">
-            Select a bank to withdraw your USDT to INR
+            Select a bank to exchange your USDT to INR
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function Withdraw() {
             Select Bank
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Choose your bank to proceed with withdrawal
+            Choose your bank to proceed with exchange
           </p>
 
           {banksLoading ? (
@@ -105,12 +105,12 @@ export default function Withdraw() {
         <div className="p-4 bg-muted rounded-lg flex gap-3">
           <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Withdrawal Process</p>
+            <p className="font-medium text-foreground mb-1">Exchange Process</p>
             <ul className="space-y-1">
-              <li>• Withdrawals are processed within 24 hours</li>
+              <li>• Exchanges are processed within 24 hours</li>
               <li>• Bank transfer time depends on the selected bank</li>
               <li>• A 1 USDT network fee applies</li>
-              <li>• Minimum withdrawal: 10 USDT</li>
+              <li>• Minimum exchange: 10 USDT</li>
             </ul>
           </div>
         </div>

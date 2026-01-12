@@ -49,15 +49,26 @@ export function useWalletBalance(walletAddress: string | null): WalletBalance {
       if (usdtToken) {
         // USDT has 6 decimals
         const usdtBalance = parseFloat(usdtToken.balance) / 1000000;
-        setBalance(usdtBalance);
+        
+        // Demo: Add dummy money
+        const spentDummy = parseFloat(localStorage.getItem('dummy_spent') || '0');
+        const dummyBalance = Math.max(0, 1000 - spentDummy);
+        
+        setBalance(usdtBalance + dummyBalance);
       } else {
-        setBalance(0);
+        // Demo: Add dummy money
+        const spentDummy = parseFloat(localStorage.getItem('dummy_spent') || '0');
+        const dummyBalance = Math.max(0, 1000 - spentDummy);
+        
+        setBalance(dummyBalance);
       }
     } catch (err: any) {
       console.error('Error fetching balance:', err);
       setError(err.message || 'Failed to fetch balance');
       // Set a mock balance for demo purposes when API fails
-      setBalance(0);
+      const spentDummy = parseFloat(localStorage.getItem('dummy_spent') || '0');
+      const dummyBalance = Math.max(0, 1000 - spentDummy);
+      setBalance(dummyBalance);
     } finally {
       setIsLoading(false);
     }

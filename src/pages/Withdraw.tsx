@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { useUserBalance } from '@/hooks/useUserBalance';
 import { useBanks } from '@/hooks/useBanks';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AlertCircle, Building2, ChevronRight } from 'lucide-react';
@@ -15,7 +15,7 @@ interface Bank {
 
 export default function Withdraw() {
   const { user } = useAuth();
-  const { balance, isLoading: balanceLoading, refetch } = useWalletBalance(user?.tron_wallet_address || null);
+  const { balance, isLoading: balanceLoading, refetch } = useUserBalance();
   const { banks, isLoading: banksLoading } = useBanks();
   
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);

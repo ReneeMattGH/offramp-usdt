@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/auth';
-import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { useUserBalance } from '@/hooks/useUserBalance';
 import { useDepositAddress } from '@/hooks/useDepositAddress';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Copy, ExternalLink, AlertCircle, RefreshCw, Clock } from 'lucide-react';
@@ -9,7 +9,7 @@ import QRCode from 'react-qr-code';
 
 export default function Deposit() {
   const { user } = useAuth();
-  const { balance, isLoading: balanceLoading, refetch } = useWalletBalance(user?.tron_wallet_address || null);
+  const { balance, isLoading: balanceLoading, refetch } = useUserBalance();
   const { 
     address: depositAddress, 
     timeRemaining, 

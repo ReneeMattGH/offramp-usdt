@@ -37,10 +37,7 @@ export function useUserBalance(): UserBalance {
         throw balanceError;
       }
 
-      // Demo: Add dummy money
-      const spentDummy = parseFloat(localStorage.getItem('dummy_spent') || '0');
-      const dummyBalance = Math.max(0, 1000 - spentDummy);
-      setBalance((balanceData || 0) + dummyBalance);
+      setBalance(balanceData || 0);
 
       // Get pending salary transactions
       const { data: pendingTxs, error: pendingError } = await supabase

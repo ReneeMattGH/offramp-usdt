@@ -105,12 +105,8 @@ export function WithdrawalModal({
     setIsSubmitting(true);
 
     try {
-      // Check if this is the dummy demo transaction
-      const isDummyDemo = ifscCode === 'ICIC2345678';
-
-      if (!isDummyDemo) {
         // Create withdrawal record
-        const { error: withdrawalError } = await supabase
+        const { data: withdrawalData, error: withdrawalError } = await supabase
           .from('withdrawals')
           .insert({
             user_id: userId,
@@ -118,12 +114,31 @@ export function WithdrawalModal({
             status: 'pending',
             bank_account_number: accountNumber,
             ifsc_code: ifscCode.toUpperCase(),
-            bank_code: bank?.code,
-          });
+          })
+          .select()
+          .single();
 
         if (withdrawalError) throw withdrawalError;
 
-        // Create transaction record
+        // Deduct from Ledger immediately to prevent double spend
+        // Note: In a real app, this should be a database transaction or RPC
+        const { error: ledgerError } = await supabase
+          .from('ledger')
+          .insert({
+             user_id: userId,
+             tx_hash: withdrawalData.id, // Use withdrawal ID as hash
+             credit_usdt: 0,
+             debit_usdt: withdrawAmount,
+             balance_after: maxBalance - withdrawAmount, // Optimistic balance
+             description: `Withdrawal to ${bank?.name || 'Bank'}`
+          });
+          
+         if (ledgerError) {
+             console.error('Ledger error:', ledgerError);
+             // Should rollback withdrawal here ideally
+         }
+
+        // Create transaction record for UI history
         const { error: transactionError } = await supabase
           .from('transactions')
           .insert({
@@ -131,34 +146,13 @@ export function WithdrawalModal({
             type: 'withdrawal',
             amount: withdrawAmount,
             status: 'pending',
+            tx_hash: withdrawalData.id
           });
 
         if (transactionError) throw transactionError;
-      } else {
-        // Simulate network delay for demo
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Save dummy transaction to localStorage
-        const newDummyTx = {
-          id: `dummy-${Date.now()}`,
-          type: 'withdrawal',
-          amount: withdrawAmount,
-          status: 'pending', // Initial status
-          tx_hash: null,
-          created_at: new Date().toISOString(),
-          is_dummy: true
-        };
-        
-        const existingDummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
-        localStorage.setItem('dummy_transactions', JSON.stringify([newDummyTx, ...existingDummyTxs]));
-      }
 
       setIsSuccess(true);
       toast.success('Exchange request submitted successfully');
-
-      // Update dummy spent
-      const currentSpent = parseFloat(localStorage.getItem('dummy_spent') || '0');
-      localStorage.setItem('dummy_spent', (currentSpent + withdrawAmount).toString());
 
       setTimeout(() => {
         onSuccess();

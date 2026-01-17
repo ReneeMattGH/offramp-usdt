@@ -55,14 +55,8 @@ export default function Transactions() {
         type: item.type as 'deposit' | 'salary' | 'withdrawal',
         status: item.status as 'pending' | 'processing' | 'completed' | 'failed',
       }));
-
-      // Demo: Merge dummy transactions
-      const dummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
-      const allTransactions = [...dummyTxs, ...typedData].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
       
-      setTransactions(allTransactions);
+      setTransactions(typedData);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {

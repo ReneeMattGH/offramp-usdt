@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 
 interface Bank {
   id: string;
@@ -42,17 +43,50 @@ export function WithdrawalModal({
   const [accountNumber, setAccountNumber] = useState('');
   const [confirmAccountNumber, setConfirmAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const { user, sendOtp } = useAuth();
 
   useEffect(() => {
-    if (bank?.code === 'ICICI' && isOpen) {
-      setAccountHolderName('James');
-      setAccountNumber('123456789');
-      setConfirmAccountNumber('123456789');
-      setIfscCode('ICIC2345678');
+    if (isOpen && user) {
+      setAccountHolderName(user.account_holder_name || '');
+      setAccountNumber(user.account_number || '');
+      setConfirmAccountNumber(user.account_number || '');
+      setIfscCode(user.ifsc_code || '');
     }
-  }, [bank, isOpen]);
+  }, [isOpen, user]);
+
+  const handleSendOtp = async () => {
+    if (!accountNumber.trim()) {
+      toast.error('Please enter account number');
+      return;
+    }
+
+    if (!phoneNumber.trim()) {
+      toast.error('Please enter phone number');
+      return;
+    }
+
+    setIsSendingOtp(true);
+
+    try {
+      const { error } = await sendOtp(accountNumber);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      setIsOtpSent(true);
+      toast.success('OTP sent successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send OTP');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,17 +128,52 @@ export function WithdrawalModal({
       return;
     }
 
-    // Validate IFSC code format (11 characters, first 4 letters, 5th is 0, last 6 alphanumeric)
-    // Allow specific dummy IFSC for ICICI demo
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (ifscCode !== 'ICIC2345678' && !ifscRegex.test(ifscCode.toUpperCase())) {
+    if (!ifscRegex.test(ifscCode.toUpperCase())) {
       toast.error('Please enter a valid IFSC code');
+      return;
+    }
+
+    if (!phoneNumber.trim()) {
+      toast.error('Please enter phone number');
+      return;
+    }
+
+    if (!isOtpSent) {
+      toast.error('Please request OTP before submitting');
+      return;
+    }
+
+    if (!otp.trim()) {
+      toast.error('Please enter OTP');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+        const { data: otpData, error: otpError } = await supabase
+          .from('otps')
+          .select('*')
+          .eq('account_number', accountNumber)
+          .eq('otp_code', otp)
+          .eq('used', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (otpError || !otpData) {
+          toast.error('Invalid or expired OTP');
+          setIsSubmitting(false);
+          return;
+        }
+
+        await supabase
+          .from('otps')
+          .update({ used: true })
+          .eq('id', otpData.id);
+
         // Create withdrawal record
         const { data: withdrawalData, error: withdrawalError } = await supabase
           .from('withdrawals')
@@ -114,6 +183,7 @@ export function WithdrawalModal({
             status: 'pending',
             bank_account_number: accountNumber,
             ifsc_code: ifscCode.toUpperCase(),
+            bank_code: bank?.code || null,
           })
           .select()
           .single();
@@ -172,6 +242,10 @@ export function WithdrawalModal({
     setAccountNumber('');
     setConfirmAccountNumber('');
     setIfscCode('');
+    setPhoneNumber('');
+    setOtp('');
+    setIsOtpSent(false);
+    setIsSendingOtp(false);
     setIsSuccess(false);
     onClose();
   };
@@ -301,6 +375,48 @@ export function WithdrawalModal({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                placeholder="Enter Indian mobile number"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="otp">OTP</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength={6}
+                  disabled={isSubmitting}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendOtp}
+                  disabled={isSubmitting || isSendingOtp}
+                >
+                  {isSendingOtp ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Sending
+                    </>
+                  ) : (
+                    'Send OTP'
+                  )}
+                </Button>
+              </div>
+            </div>
+
             {/* Submit */}
             <div className="flex gap-3 pt-2">
               <Button
@@ -314,7 +430,16 @@ export function WithdrawalModal({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !amount || !accountHolderName || !accountNumber || !confirmAccountNumber || !ifscCode}
+                disabled={
+                  isSubmitting ||
+                  !amount ||
+                  !accountHolderName ||
+                  !accountNumber ||
+                  !confirmAccountNumber ||
+                  !ifscCode ||
+                  !phoneNumber ||
+                  !otp
+                }
                 className="flex-1"
               >
                 {isSubmitting ? (

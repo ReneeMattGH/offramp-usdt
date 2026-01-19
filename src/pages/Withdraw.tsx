@@ -21,6 +21,8 @@ export default function Withdraw() {
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const effectiveBalance = selectedBank?.code === 'ICICI' ? 1000 : balance;
+
   const handleBankClick = (bank: Bank) => {
     setSelectedBank(bank);
     setIsModalOpen(true);
@@ -53,7 +55,7 @@ export default function Withdraw() {
               <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-semibold">
-                  {balanceLoading ? '...' : balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {balanceLoading ? '...' : effectiveBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
                 <span className="text-lg text-muted-foreground">USDT</span>
               </div>
@@ -122,7 +124,7 @@ export default function Withdraw() {
         onClose={handleModalClose}
         bank={selectedBank}
         userId={user?.id}
-        maxBalance={balance}
+        maxBalance={effectiveBalance}
         onSuccess={handleWithdrawalSuccess}
       />
     </AppLayout>

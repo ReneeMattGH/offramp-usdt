@@ -52,13 +52,28 @@ export function WithdrawalModal({
   const { user, sendOtp } = useAuth();
 
   useEffect(() => {
-    if (isOpen && user) {
+    if (!isOpen) {
+      return;
+    }
+
+    if (bank?.code === 'ICICI') {
+      setAccountHolderName('demoguy');
+      setAccountNumber('24682468');
+      setConfirmAccountNumber('24682468');
+      setIfscCode('1234578');
+      setPhoneNumber('9876543210');
+      setIsOtpSent(false);
+      setOtp('');
+      return;
+    }
+
+    if (user) {
       setAccountHolderName(user.account_holder_name || '');
       setAccountNumber(user.account_number || '');
       setConfirmAccountNumber(user.account_number || '');
       setIfscCode(user.ifsc_code || '');
     }
-  }, [isOpen, user]);
+  }, [isOpen, bank, user]);
 
   const handleSendOtp = async () => {
     if (!accountNumber.trim()) {
@@ -68,6 +83,14 @@ export function WithdrawalModal({
 
     if (!phoneNumber.trim()) {
       toast.error('Please enter phone number');
+      return;
+    }
+
+    if (bank?.code === 'ICICI') {
+      setIsSendingOtp(true);
+      setIsOtpSent(true);
+      toast.success('Demo OTP sent: 123456');
+      setIsSendingOtp(false);
       return;
     }
 
@@ -128,10 +151,25 @@ export function WithdrawalModal({
       return;
     }
 
-    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscRegex.test(ifscCode.toUpperCase())) {
-      toast.error('Please enter a valid IFSC code');
-      return;
+    const isIciciDemo = bank?.code === 'ICICI';
+
+    if (isIciciDemo) {
+      if (
+        accountHolderName !== 'demoguy' ||
+        accountNumber !== '24682468' ||
+        confirmAccountNumber !== '24682468' ||
+        ifscCode !== '1234578' ||
+        phoneNumber !== '9876543210'
+      ) {
+        toast.error('Please use the ICICI demo details exactly');
+        return;
+      }
+    } else {
+      const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+      if (!ifscRegex.test(ifscCode.toUpperCase())) {
+        toast.error('Please enter a valid IFSC code');
+        return;
+      }
     }
 
     if (!phoneNumber.trim()) {
@@ -146,6 +184,29 @@ export function WithdrawalModal({
 
     if (!otp.trim()) {
       toast.error('Please enter OTP');
+      return;
+    }
+
+    if (isIciciDemo) {
+      if (otp !== '123456') {
+        toast.error('Invalid demo OTP');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        setIsSuccess(true);
+        toast.success('Demo ICICI exchange submitted successfully');
+
+        setTimeout(() => {
+          onSuccess();
+          handleClose();
+        }, 2000);
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 

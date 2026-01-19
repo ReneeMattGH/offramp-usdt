@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
+  const displayBalance = user?.account_number === '24682468' ? 1000 : balance;
+
   useEffect(() => {
     const fetchRecentActivity = async () => {
       if (!user?.id) return;
@@ -147,7 +149,7 @@ export default function Dashboard() {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-3">
                     <span className="text-5xl md:text-6xl font-bold tracking-tight">
-                      {balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                     <span className="text-2xl text-muted-foreground font-medium">USDT</span>
                   </div>
@@ -182,7 +184,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">This Month</span>
               </div>
-              <p className="text-2xl font-bold">+{balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} USDT</p>
+              <p className="text-2xl font-bold">+{displayBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} USDT</p>
               <p className="text-xs text-muted-foreground mt-1">Total received</p>
             </div>
 

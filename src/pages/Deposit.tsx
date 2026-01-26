@@ -2,7 +2,12 @@ import { useAuth } from '@/lib/auth';
 import { useUserBalance } from '@/hooks/useUserBalance';
 import { useDepositAddress } from '@/hooks/useDepositAddress';
 import { AppLayout } from '@/components/layout/AppLayout';
+<<<<<<< HEAD
 import { Copy, ExternalLink, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+=======
+import { Link } from 'react-router-dom';
+import { Copy, ExternalLink, AlertCircle, RefreshCw, Clock, Shield } from 'lucide-react';
+>>>>>>> ce6f0a8 (Initial commit)
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import QRCode from 'react-qr-code';
@@ -16,7 +21,11 @@ export default function Deposit() {
     formatTimeRemaining, 
     isLoading: addressLoading,
     refresh: refreshAddress 
+<<<<<<< HEAD
   } = useDepositAddress(user?.id || null);
+=======
+  } = useDepositAddress();
+>>>>>>> ce6f0a8 (Initial commit)
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -25,6 +34,26 @@ export default function Deposit() {
 
   const isLoading = addressLoading;
 
+<<<<<<< HEAD
+=======
+  if (user?.kyc_status !== 'approved') {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
+          <Shield className="w-16 h-16 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Verification Required</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Please complete your identity verification (KYC) in Settings to access deposits.
+          </p>
+          <Link to="/settings">
+            <Button>Go to Settings</Button>
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
+
+>>>>>>> ce6f0a8 (Initial commit)
   return (
     <AppLayout>
       <div className="animate-fade-in max-w-3xl">
@@ -47,6 +76,12 @@ export default function Deposit() {
                 </span>
                 <span className="text-muted-foreground">USDT</span>
               </div>
+<<<<<<< HEAD
+=======
+              <p className="text-xs text-green-600 mt-1 animate-pulse">
+                 Live updates active
+              </p>
+>>>>>>> ce6f0a8 (Initial commit)
             </div>
             <Button variant="outline" size="sm" onClick={refetch} disabled={balanceLoading}>
               <RefreshCw className={`w-4 h-4 mr-2 ${balanceLoading ? 'animate-spin' : ''}`} />
@@ -113,12 +148,20 @@ export default function Deposit() {
               </div>
 
               <a
+<<<<<<< HEAD
                 href={`https://tronscan.org/#/address/${depositAddress}`}
+=======
+                href={`https://nile.tronscan.org/#/address/${depositAddress}`}
+>>>>>>> ce6f0a8 (Initial commit)
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
+<<<<<<< HEAD
                 View on TronScan
+=======
+                View on TronScan (Nile Testnet)
+>>>>>>> ce6f0a8 (Initial commit)
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>

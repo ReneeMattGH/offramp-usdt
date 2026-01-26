@@ -49,7 +49,11 @@ export function WithdrawalModal({
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+<<<<<<< HEAD
   const { user, sendOtp } = useAuth();
+=======
+  const { user, sendOtp, sessionToken } = useAuth();
+>>>>>>> ce6f0a8 (Initial commit)
 
   useEffect(() => {
     if (!isOpen) {
@@ -192,6 +196,7 @@ export function WithdrawalModal({
         toast.error('Invalid demo OTP');
         return;
       }
+<<<<<<< HEAD
 
       setIsSubmitting(true);
 
@@ -213,6 +218,12 @@ export function WithdrawalModal({
     setIsSubmitting(true);
 
     try {
+=======
+    } else {
+      // Real OTP check for non-demo users
+      setIsSubmitting(true);
+      try {
+>>>>>>> ce6f0a8 (Initial commit)
         const { data: otpData, error: otpError } = await supabase
           .from('otps')
           .select('*')
@@ -234,6 +245,7 @@ export function WithdrawalModal({
           .from('otps')
           .update({ used: true })
           .eq('id', otpData.id);
+<<<<<<< HEAD
 
         // Create withdrawal record
         const { data: withdrawalData, error: withdrawalError } = await supabase
@@ -281,6 +293,74 @@ export function WithdrawalModal({
           });
 
         if (transactionError) throw transactionError;
+=======
+      } catch (err: any) {
+         toast.error(err.message || 'OTP Verification Failed');
+         setIsSubmitting(false);
+         return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          amount: withdrawAmount,
+          bank_account_number: accountNumber,
+          ifsc_code: ifscCode.toUpperCase(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === 'KYC_REQUIRED') {
+            toast.error(data.message || 'KYC Verification Required');
+            setTimeout(() => window.location.href = '/settings', 2000);
+            throw new Error(data.message || 'KYC Verification Required');
+        }
+        throw new Error(data.error || 'Withdrawal failed');
+      }
+
+      // Deduct from Ledger immediately to prevent double spend
+      // Note: In a real app, this should be a database transaction or RPC
+      /*
+      const { error: ledgerError } = await supabase
+        .from('ledger')
+        .insert({
+           user_id: userId,
+           tx_hash: data.withdrawal.id, // Use withdrawal ID as hash
+           credit_usdt: 0,
+           debit_usdt: withdrawAmount,
+           balance_after: maxBalance - withdrawAmount, // Optimistic balance
+           description: `Withdrawal to ${bank?.name || 'Bank'}`
+        });
+        
+       if (ledgerError) {
+           console.error('Ledger error:', ledgerError);
+           // Should rollback withdrawal here ideally
+       }
+
+      // Create transaction record for UI history
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          type: 'withdrawal',
+          amount: withdrawAmount,
+          status: 'pending',
+          tx_hash: data.withdrawal.id
+        });
+
+      if (transactionError) throw transactionError;
+      */
+>>>>>>> ce6f0a8 (Initial commit)
 
       setIsSuccess(true);
       toast.success('Exchange request submitted successfully');

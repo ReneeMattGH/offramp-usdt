@@ -10,8 +10,15 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Deposit from "./pages/Deposit";
 import Withdraw from "./pages/Withdraw";
+<<<<<<< HEAD
 import Transactions from "./pages/Transactions";
 import Settings from "./pages/Settings";
+=======
+import WithdrawUSDT from "./pages/WithdrawUSDT";
+import Transactions from "./pages/Transactions";
+import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
+>>>>>>> ce6f0a8 (Initial commit)
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +96,14 @@ function AppRoutes() {
           <Withdraw />
         </ProtectedRoute>
       } />
+<<<<<<< HEAD
+=======
+      <Route path="/withdraw-usdt" element={
+        <ProtectedRoute>
+          <WithdrawUSDT />
+        </ProtectedRoute>
+      } />
+>>>>>>> ce6f0a8 (Initial commit)
       <Route path="/transactions" element={
         <ProtectedRoute>
           <Transactions />
@@ -99,6 +114,14 @@ function AppRoutes() {
           <Settings />
         </ProtectedRoute>
       } />
+<<<<<<< HEAD
+=======
+      <Route path="/admin" element={
+        <ProtectedRoute>
+          <Admin />
+        </ProtectedRoute>
+      } />
+>>>>>>> ce6f0a8 (Initial commit)
 
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />

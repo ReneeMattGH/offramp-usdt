@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+<<<<<<< HEAD
+=======
+import { useAuth } from '@/lib/auth';
+import { toast } from 'sonner';
+>>>>>>> ce6f0a8 (Initial commit)
 
 interface DepositAddress {
   id: string;
@@ -8,6 +13,7 @@ interface DepositAddress {
   created_at: string;
 }
 
+<<<<<<< HEAD
 // Generate a mock TRON address (in production, use TronWeb)
 const generateMockTronAddress = (): { address: string; privateKey: string } => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789';
@@ -32,12 +38,22 @@ const encryptPrivateKey = (privateKey: string): string => {
 };
 
 export function useDepositAddress(userId: string | null) {
+=======
+export function useDepositAddress() {
+  const { user, sessionToken } = useAuth();
+  const userId = user?.id;
+  
+>>>>>>> ce6f0a8 (Initial commit)
   const [address, setAddress] = useState<DepositAddress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   const fetchOrCreateAddress = useCallback(async () => {
+<<<<<<< HEAD
     if (!userId) {
+=======
+    if (!userId || !sessionToken) {
+>>>>>>> ce6f0a8 (Initial commit)
       setIsLoading(false);
       return;
     }
@@ -78,14 +94,22 @@ export function useDepositAddress(userId: string | null) {
     } finally {
       setIsLoading(false);
     }
+<<<<<<< HEAD
   }, [userId]);
 
   const createNewAddress = useCallback(async () => {
     if (!userId) return;
+=======
+  }, [userId, sessionToken]);
+
+  const createNewAddress = useCallback(async () => {
+    if (!userId || !sessionToken) return;
+>>>>>>> ce6f0a8 (Initial commit)
 
     setIsLoading(true);
     
     try {
+<<<<<<< HEAD
       // Mark all old addresses as used
       await supabase
         .from('deposit_addresses')
@@ -119,18 +143,53 @@ export function useDepositAddress(userId: string | null) {
           created_at: newDepositAddress.created_at,
       });
 
+=======
+      // Call the backend API to generate a real address
+      const response = await fetch('http://localhost:3000/api/generate-address', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({}), // No need to send user_id, it's in the token
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === 'KYC_REQUIRED') {
+            toast.error(data.message || 'KYC Verification Required');
+            setTimeout(() => window.location.href = '/settings', 1500);
+        }
+        throw new Error(data.error || 'Failed to generate address');
+      }
+
+      const newDepositAddress = data.address;
+
+>>>>>>> ce6f0a8 (Initial commit)
       setAddress({
         id: newDepositAddress.id,
         tron_address: newDepositAddress.tron_address,
         expires_at: newDepositAddress.expires_at,
         created_at: newDepositAddress.created_at,
       });
+<<<<<<< HEAD
     } catch (err) {
       console.error('Error creating new address:', err);
     } finally {
       setIsLoading(false);
     }
   }, [userId]);
+=======
+
+    } catch (err) {
+      console.error('Error creating new address:', err);
+      // Optional: toast.error('Failed to generate deposit address');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, sessionToken]);
+>>>>>>> ce6f0a8 (Initial commit)
 
   // Calculate time remaining until expiry
   useEffect(() => {

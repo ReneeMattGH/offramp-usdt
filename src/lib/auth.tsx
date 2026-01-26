@@ -7,6 +7,12 @@ interface User {
   account_number: string;
   ifsc_code: string;
   tron_wallet_address: string | null;
+<<<<<<< HEAD
+=======
+  kyc_status?: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+  pan_number?: string | null;
+  kyc_verified_at?: string | null;
+>>>>>>> ce6f0a8 (Initial commit)
 }
 
 interface AuthContextType {
@@ -17,6 +23,10 @@ interface AuthContextType {
   signup: (accountHolderName: string, accountNumber: string, ifscCode: string, otp: string) => Promise<{ error: string | null }>;
   sendOtp: (accountNumber: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
+<<<<<<< HEAD
+=======
+  refreshUser: () => Promise<void>;
+>>>>>>> ce6f0a8 (Initial commit)
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +36,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+<<<<<<< HEAD
+=======
+  const fetchUserData = async (userId: string) => {
+    try {
+      // Use Backend API instead of direct Supabase to get Mocked Data
+      const token = localStorage.getItem('session_token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:3000/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const userData = await response.json();
+      setUser(userData as unknown as User);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  const refreshUser = async () => {
+    const storedUserId = localStorage.getItem('user_id');
+    if (storedUserId) {
+      await fetchUserData(storedUserId);
+    }
+  };
+
+>>>>>>> ce6f0a8 (Initial commit)
   useEffect(() => {
     // Check for existing session on load
     const storedToken = localStorage.getItem('session_token');
@@ -36,6 +79,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false);
     }
+<<<<<<< HEAD
+=======
+    
+    // Subscribe to realtime changes for the user
+    if (storedUserId) {
+      const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${storedUserId}`,
+          },
+          (payload) => {
+            console.log('User update received:', payload);
+            setUser(payload.new as unknown as User);
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+>>>>>>> ce6f0a8 (Initial commit)
   }, []);
 
   const validateSession = async (token: string, userId: string) => {
@@ -56,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+<<<<<<< HEAD
       // Fetch user data
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -71,6 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(userData);
+=======
+      await fetchUserData(userId);
+>>>>>>> ce6f0a8 (Initial commit)
       setSessionToken(token);
     } catch (err) {
       console.error('Session validation error:', err);
@@ -181,7 +255,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('session_token', token);
       localStorage.setItem('user_id', newUser.id);
 
+<<<<<<< HEAD
       setUser(newUser);
+=======
+      setUser(newUser as unknown as User);
+>>>>>>> ce6f0a8 (Initial commit)
       setSessionToken(token);
 
       return { error: null };
@@ -241,7 +319,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('session_token', token);
       localStorage.setItem('user_id', userData.id);
 
+<<<<<<< HEAD
       setUser(userData);
+=======
+      setUser(userData as unknown as User);
+>>>>>>> ce6f0a8 (Initial commit)
       setSessionToken(token);
 
       return { error: null };
@@ -269,7 +351,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
+<<<<<<< HEAD
     <AuthContext.Provider value={{ user, sessionToken, isLoading, login, signup, sendOtp, logout }}>
+=======
+    <AuthContext.Provider value={{ user, sessionToken, isLoading, login, signup, sendOtp, logout, refreshUser }}>
+>>>>>>> ce6f0a8 (Initial commit)
       {children}
     </AuthContext.Provider>
   );

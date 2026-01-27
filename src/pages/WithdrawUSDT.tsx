@@ -308,7 +308,7 @@ export default function WithdrawUSDT() {
                                         </div>
                                         
                                         <div className="text-xs text-muted-foreground break-all">
-                                            To: {w.destination_address}
+                                            To: {w.destination_address.slice(0, 6)}...{w.destination_address.slice(-4)}
                                         </div>
 
                                         {w.tx_hash && (

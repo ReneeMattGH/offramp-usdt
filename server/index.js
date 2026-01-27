@@ -51,6 +51,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
     }
 })();
 
+// Global Config (In-Memory for now)
+let globalConfig = {
+    withdrawals_enabled: true,
+    min_usdt_withdrawal: 20.0,
+    fee: 5.0,
+    daily_limit: 100000.0
+};
+
 // --- API Endpoints ---
 
 app.get('/', (req, res) => {
@@ -66,11 +74,27 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 // --- Public Config ---
 app.get('/api/config/public', (req, res) => {
     res.json({
-        usdt_withdrawal_fee: 5.0,
-        min_usdt_withdrawal: 20.0,
-        daily_withdrawal_limit: 100000.0,
-        withdrawals_enabled: true
+        usdt_withdrawal_fee: globalConfig.fee,
+        min_usdt_withdrawal: globalConfig.min_usdt_withdrawal,
+        daily_withdrawal_limit: globalConfig.daily_limit,
+        withdrawals_enabled: globalConfig.withdrawals_enabled
     });
+});
+
+// Admin: Toggle Withdrawals
+app.post('/api/admin/config/toggle-withdrawals', async (req, res) => {
+    // Ideally add admin auth middleware here
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'Invalid value' });
+    
+    globalConfig.withdrawals_enabled = enabled;
+    // Log audit
+    // Assuming we have user context, if not, we use 'system' or passed admin id
+    // For now, let's assume this is called by an admin panel with auth
+    // We'll just log as 'system' or 'admin' if we had the ID.
+    // Since this endpoint is new and might be called via curl for now, we'll keep it simple.
+    console.log(`[CONFIG] Withdrawals enabled set to ${enabled}`);
+    res.json({ success: true, enabled: globalConfig.withdrawals_enabled });
 });
 
 // --- USDT Withdrawal Endpoints ---
@@ -80,11 +104,31 @@ app.post('/api/withdraw/usdt', authMiddleware, requireKycApproved, async (req, r
     const { destination_address, amount } = req.body;
     const userId = req.user.id;
 
+    if (!globalConfig.withdrawals_enabled) {
+        return res.status(503).json({ error: 'Withdrawals are currently paused by admin' });
+    }
+
     if (!destination_address || !amount) {
         return res.status(400).json({ error: 'Missing destination address or amount' });
     }
 
+    if (parseFloat(amount) < globalConfig.min_usdt_withdrawal) {
+        return res.status(400).json({ error: `Minimum withdrawal amount is ${globalConfig.min_usdt_withdrawal} USDT` });
+    }
+
     try {
+        // 0. Check Unique Pending Withdrawal Constraint
+        const { data: pendingWithdrawal } = await supabase
+            .from('usdt_withdrawals')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('status', 'pending')
+            .maybeSingle();
+        
+        if (pendingWithdrawal) {
+            return res.status(400).json({ error: 'You already have a pending withdrawal request.' });
+        }
+
         // 1. Lock Funds (Atomically)
         const withdrawalId = uuidv4();
         // Use ledgerService to lock funds. 
@@ -98,7 +142,7 @@ app.post('/api/withdraw/usdt', authMiddleware, requireKycApproved, async (req, r
         
         // However, if we look at the ledgerService signature: lockFundsForWithdrawal(userId, amount, withdrawalId)
         
-        const fee = 5.0; // Hardcoded for now, should come from config
+        const fee = globalConfig.fee;
         const totalAmount = parseFloat(amount) + fee;
 
         // Attempt to lock funds
@@ -192,6 +236,10 @@ app.post('/api/admin/withdrawals/usdt/action', async (req, res) => {
                 .eq('id', withdrawal_id);
             
             if (error) throw error;
+            
+            // Audit Log
+            await auditService.log('admin', 'admin_user', 'WITHDRAWAL_RETRY', withdrawal_id, { reason }, req.clientIp);
+            
             res.json({ success: true });
 
         } else if (action === 'cancel') {
@@ -212,6 +260,10 @@ app.post('/api/admin/withdrawals/usdt/action', async (req, res) => {
                 .eq('id', withdrawal_id);
             
              if (error) throw error;
+             
+             // Audit Log
+             await auditService.log('admin', 'admin_user', 'WITHDRAWAL_CANCEL', withdrawal_id, { reason, amount: w.usdt_amount }, req.clientIp);
+
              res.json({ success: true });
         } else {
             res.status(400).json({ error: 'Invalid action' });

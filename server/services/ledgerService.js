@@ -302,25 +302,9 @@ class LedgerService {
         if (fetchError || !account) throw new Error('Account not found');
 
         const locked = parseFloat(account.locked_balance || 0);
-        const settled = parseFloat(account.settled_balance || 0);
         const reqAmount = parseFloat(amount);
 
         const newLocked = locked - reqAmount;
-        const newSettled = settled - reqAmount; // Wait, settled balance? 
-        // Usually finalized withdrawal means money left the system. 
-        // So we reduce locked (liability) and maybe track it in settled if settled tracks "net outcome"? 
-        // Or just reduce locked. 
-        // Let's assume "settled_balance" tracks *completed* transactions? 
-        // Or maybe settled_balance is just "money that is yours and not pending"?
-        // Actually, in standard double entry:
-        // Lock: Available -> Locked
-        // Finalize: Locked -> (Gone)
-        // So we just decrease Locked.
-        
-        // However, the `creditDeposit` increases `available`.
-        // So `finalizeWithdrawal` should just decrease `locked`.
-        
-        // Wait, if I decrease locked, the total balance decreases. Correct.
         
         const { error } = await supabase
             .from('ledger_accounts')

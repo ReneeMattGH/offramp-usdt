@@ -78,7 +78,7 @@ export function KYCVerificationModal({
 
   const handleClose = () => {
     setStep('aadhaar');
-    setAadhaarNumber('123456123456');
+    setAadhaarNumber('123456789012'); // Reset to valid demo number
     onClose();
   };
 
@@ -89,6 +89,10 @@ export function KYCVerificationModal({
           <DialogTitle>Identity Verification</DialogTitle>
           <DialogDescription>
             Verify your identity to enable withdrawals. This is a one-time process.
+            <br />
+            <span className="text-xs text-muted-foreground mt-2 block font-mono bg-muted p-2 rounded">
+              Demo Numbers: 123456789012, 999988887777
+            </span>
           </DialogDescription>
         </DialogHeader>
 

@@ -20,12 +20,12 @@ const navItems = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export function Sidebar() {
+export function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation();
   const { logout, user } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+    <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
@@ -37,13 +37,14 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link
               key={item.name}
               to={item.href}
+              onClick={onNavClick}
               className={cn(
                 'nav-link',
                 isActive ? 'nav-link-active' : 'nav-link-inactive'
@@ -72,6 +73,14 @@ export function Sidebar() {
           <span>Logout</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+export function Sidebar({ className }: { className?: string }) {
+  return (
+    <aside className={cn("fixed left-0 top-0 h-screen w-64 border-r border-sidebar-border", className)}>
+      <SidebarContent />
     </aside>
   );
 }

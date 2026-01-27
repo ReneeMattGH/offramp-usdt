@@ -107,11 +107,7 @@ serve(async (req) => {
               .update({
                 status: "confirmed",
                 block_number: txInfo.blockNumber,
-<<<<<<< HEAD
-                confirmed_at: new Date().toISOString(),
-=======
                 confirmed_at: new Date().toISOString(), 
->>>>>>> ce6f0a8 (Initial commit)
               })
               .eq("id", tx.id);
 

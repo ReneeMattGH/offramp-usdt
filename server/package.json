@@ -4,12 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
-=======
     "start": "node index.js",
     "dev": "node --watch index.js",
     "migrate": "node scripts/migrate.js",
->>>>>>> ce6f0a8 (Initial commit)
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,10 +18,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-<<<<<<< HEAD
-=======
     "lucide-react": "^0.562.0",
->>>>>>> ce6f0a8 (Initial commit)
     "node-cron": "^4.2.1",
     "pg": "^8.16.3",
     "tronweb": "^6.1.1",

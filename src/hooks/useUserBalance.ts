@@ -4,10 +4,7 @@ import { useAuth } from '@/lib/auth';
 
 interface UserBalance {
   balance: number;
-<<<<<<< HEAD
-=======
   lockedBalance: number;
->>>>>>> ce6f0a8 (Initial commit)
   pendingSalary: number;
   isLoading: boolean;
   error: string | null;
@@ -17,10 +14,7 @@ interface UserBalance {
 export function useUserBalance(): UserBalance {
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
-<<<<<<< HEAD
-=======
   const [lockedBalance, setLockedBalance] = useState(0);
->>>>>>> ce6f0a8 (Initial commit)
   const [pendingSalary, setPendingSalary] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,20 +29,6 @@ export function useUserBalance(): UserBalance {
     setError(null);
 
     try {
-<<<<<<< HEAD
-      // Get balance from database function (derived from ledger)
-      const { data: balanceData, error: balanceError } = await supabase.rpc(
-        'get_user_balance',
-        { p_user_id: user.id }
-      );
-
-      if (balanceError) {
-        throw balanceError;
-      }
-
-      setBalance(balanceData || 0);
-
-=======
       // Get balance from ledger_accounts (Real-time Ledger)
       const { data: accountData, error: accountError } = await supabase
         .from('ledger_accounts' as any)
@@ -76,7 +56,6 @@ export function useUserBalance(): UserBalance {
         setLockedBalance(0); // No locked balance in demo mode fallback
       }
 
->>>>>>> ce6f0a8 (Initial commit)
       // Get pending salary transactions
       const { data: pendingTxs, error: pendingError } = await supabase
         .from('salary_transactions')
@@ -101,67 +80,33 @@ export function useUserBalance(): UserBalance {
 
   useEffect(() => {
     fetchBalance();
-
-<<<<<<< HEAD
-    // Subscribe to ledger changes for real-time balance updates
+    
+    // Subscribe to changes
     const channel = supabase
-      .channel('balance-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ledger',
-=======
-    // Subscribe to ledger_accounts changes for real-time balance updates
-    const channel = supabase
-      .channel('ledger-updates')
+      .channel('balance-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'ledger_accounts',
->>>>>>> ce6f0a8 (Initial commit)
           filter: `user_id=eq.${user?.id}`,
         },
-        () => {
-          fetchBalance();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'salary_transactions',
-          filter: `user_id=eq.${user?.id}`,
-        },
-        () => {
-          fetchBalance();
-        }
+        () => fetchBalance()
       )
       .subscribe();
 
-    // Poll every 30 seconds as backup
-    const interval = setInterval(fetchBalance, 30000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [fetchBalance, user?.id]);
 
-<<<<<<< HEAD
-  return { balance, pendingSalary, isLoading, error, refetch: fetchBalance };
-=======
-  return {
-    balance,
+  return { 
+    balance, 
     lockedBalance,
-    pendingSalary,
-    isLoading,
+    pendingSalary, 
+    isLoading, 
     error,
-    refetch: fetchBalance,
+    refetch: fetchBalance 
   };
->>>>>>> ce6f0a8 (Initial commit)
 }

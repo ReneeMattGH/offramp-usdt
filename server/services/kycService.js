@@ -14,11 +14,16 @@ class KycService {
     }
 
     async submitKyc(userId, data, ipAddress) {
-        const { aadhaar_number, full_name, dob } = data;
+        let { aadhaar_number, full_name, dob } = data;
+
+        // SANITIZATION: Remove any non-digits (spaces, dashes, etc.)
+        if (aadhaar_number) {
+            aadhaar_number = aadhaar_number.toString().replace(/\D/g, '');
+        }
 
         // 1. Validation
-        if (!/^\d{12}$/.test(aadhaar_number)) {
-            throw new Error('Invalid Aadhaar Number (Must be 12 digits)');
+        if (!aadhaar_number || !/^\d{12}$/.test(aadhaar_number)) {
+            throw new Error(`Invalid Aadhaar Number (Must be 12 digits). Received: ${aadhaar_number}`);
         }
 
         let status = 'pending';

@@ -100,7 +100,10 @@ export function KYCVerificationModal({
                 id="aadhaar"
                 placeholder="Enter 12-digit Aadhaar number"
                 value={aadhaarNumber}
-                onChange={(e) => setAadhaarNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setAadhaarNumber(val);
+                }}
                 maxLength={12}
                 disabled={isSubmitting}
               />

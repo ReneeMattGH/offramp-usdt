@@ -49,11 +49,7 @@ export function WithdrawalModal({
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-<<<<<<< HEAD
-  const { user, sendOtp } = useAuth();
-=======
   const { user, sendOtp, sessionToken } = useAuth();
->>>>>>> ce6f0a8 (Initial commit)
 
   useEffect(() => {
     if (!isOpen) {
@@ -196,34 +192,10 @@ export function WithdrawalModal({
         toast.error('Invalid demo OTP');
         return;
       }
-<<<<<<< HEAD
-
-      setIsSubmitting(true);
-
-      try {
-        setIsSuccess(true);
-        toast.success('Demo ICICI exchange submitted successfully');
-
-        setTimeout(() => {
-          onSuccess();
-          handleClose();
-        }, 2000);
-      } finally {
-        setIsSubmitting(false);
-      }
-
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-=======
     } else {
       // Real OTP check for non-demo users
       setIsSubmitting(true);
       try {
->>>>>>> ce6f0a8 (Initial commit)
         const { data: otpData, error: otpError } = await supabase
           .from('otps')
           .select('*')
@@ -245,55 +217,6 @@ export function WithdrawalModal({
           .from('otps')
           .update({ used: true })
           .eq('id', otpData.id);
-<<<<<<< HEAD
-
-        // Create withdrawal record
-        const { data: withdrawalData, error: withdrawalError } = await supabase
-          .from('withdrawals')
-          .insert({
-            user_id: userId,
-            amount: withdrawAmount,
-            status: 'pending',
-            bank_account_number: accountNumber,
-            ifsc_code: ifscCode.toUpperCase(),
-            bank_code: bank?.code || null,
-          })
-          .select()
-          .single();
-
-        if (withdrawalError) throw withdrawalError;
-
-        // Deduct from Ledger immediately to prevent double spend
-        // Note: In a real app, this should be a database transaction or RPC
-        const { error: ledgerError } = await supabase
-          .from('ledger')
-          .insert({
-             user_id: userId,
-             tx_hash: withdrawalData.id, // Use withdrawal ID as hash
-             credit_usdt: 0,
-             debit_usdt: withdrawAmount,
-             balance_after: maxBalance - withdrawAmount, // Optimistic balance
-             description: `Withdrawal to ${bank?.name || 'Bank'}`
-          });
-          
-         if (ledgerError) {
-             console.error('Ledger error:', ledgerError);
-             // Should rollback withdrawal here ideally
-         }
-
-        // Create transaction record for UI history
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: userId,
-            type: 'withdrawal',
-            amount: withdrawAmount,
-            status: 'pending',
-            tx_hash: withdrawalData.id
-          });
-
-        if (transactionError) throw transactionError;
-=======
       } catch (err: any) {
          toast.error(err.message || 'OTP Verification Failed');
          setIsSubmitting(false);
@@ -360,7 +283,6 @@ export function WithdrawalModal({
 
       if (transactionError) throw transactionError;
       */
->>>>>>> ce6f0a8 (Initial commit)
 
       setIsSuccess(true);
       toast.success('Exchange request submitted successfully');

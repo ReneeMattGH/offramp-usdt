@@ -1,39 +1,27 @@
-<<<<<<< HEAD
-=======
 import { supabase } from '@/integrations/supabase/client';
->>>>>>> ce6f0a8 (Initial commit)
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Copy, Shield, Building2, Wallet, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-<<<<<<< HEAD
-
-export default function Settings() {
-  const { user } = useAuth();
-=======
 import { useState } from 'react';
 import { KYCVerificationModal } from '@/components/KYCVerificationModal';
 
 export default function Settings() {
   const { user, refreshUser } = useAuth();
   const [isKYCModalOpen, setIsKYCModalOpen] = useState(false);
->>>>>>> ce6f0a8 (Initial commit)
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
   };
 
-<<<<<<< HEAD
-=======
   const handleKYCSuccess = async () => {
     await refreshUser();
     // No explicit reload needed, but we can do it if we want to be absolutely sure
     // window.location.reload(); 
   };
 
->>>>>>> ce6f0a8 (Initial commit)
   const maskAccountNumber = (num: string) => {
     if (!num) return '';
     return '••••' + num.slice(-4);
@@ -58,13 +46,9 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="font-medium">Bank Account Details</h2>
-<<<<<<< HEAD
-              <p className="text-sm text-muted-foreground">Read-only for security</p>
-=======
               <p className="text-sm text-muted-foreground">
                 {user?.kyc_status === 'approved' ? 'Verified details are read-only' : 'Verify identity to update'}
               </p>
->>>>>>> ce6f0a8 (Initial commit)
             </div>
           </div>
 
@@ -123,8 +107,6 @@ export default function Settings() {
           </div>
         </div>
 
-<<<<<<< HEAD
-=======
         {/* KYC Section */}
         <div className="stat-card mb-6">
           <div className="flex items-center gap-3 mb-6">
@@ -168,7 +150,6 @@ export default function Settings() {
           </div>
         </div>
 
->>>>>>> ce6f0a8 (Initial commit)
         {/* Security Section */}
         <div className="stat-card mb-6">
           <div className="flex items-center gap-3 mb-6">
@@ -214,22 +195,6 @@ export default function Settings() {
           <div>
             <h3 className="font-medium mb-1">Compliance Notice</h3>
             <p className="text-sm text-muted-foreground">
-<<<<<<< HEAD
-              Bank details cannot be changed for regulatory compliance and security reasons. 
-              If you need to update your bank information, please contact support with proper 
-              verification documents.
-            </p>
-          </div>
-        </div>
-
-        {/* Account Info */}
-        <div className="mt-8 pt-6 border-t border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            Account ID: {user?.id} · Created at: {new Date().toLocaleDateString()}
-          </p>
-        </div>
-      </div>
-=======
               Bank details are locked after successful verification for security reasons. 
               If you need to update your verified bank information, please contact support.
             </p>
@@ -243,7 +208,6 @@ export default function Settings() {
         onSuccess={handleKYCSuccess}
         userId={user?.id}
       />
->>>>>>> ce6f0a8 (Initial commit)
     </AppLayout>
   );
 }

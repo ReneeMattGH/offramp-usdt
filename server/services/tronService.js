@@ -17,12 +17,28 @@ const TRON_EVENT_SERVER = 'https://nile.trongrid.io';
 // Nile USDT Contract (Common Mock)
 const NILE_USDT_CONTRACT = 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj'; 
 
-const tronWeb = new TronWeb({
-    fullNode: TRON_FULL_NODE,
-    solidityNode: TRON_SOLIDITY_NODE,
-    eventServer: TRON_EVENT_SERVER,
-    privateKey: '01'.repeat(32),
-});
+// Safe Initialization of TronWeb
+let tronWeb;
+try {
+    tronWeb = new TronWeb({
+        fullNode: TRON_FULL_NODE,
+        solidityNode: TRON_SOLIDITY_NODE,
+        eventServer: TRON_EVENT_SERVER,
+        privateKey: '01'.repeat(32), // Dummy key for read-only if needed
+    });
+} catch (e) {
+    console.error('Failed to initialize TronWeb:', e);
+    // Mock tronWeb to prevent crash, but operations will fail gracefully
+    tronWeb = {
+        transactionBuilder: {},
+        trx: {
+            sign: async () => { throw new Error('TronWeb not initialized'); },
+            sendRawTransaction: async () => { throw new Error('TronWeb not initialized'); },
+            getTransactionInfo: async () => { return null; }
+        },
+        toSun: (val) => val * 1000000
+    };
+}
 
 class TronService {
     constructor() {
@@ -48,7 +64,12 @@ class TronService {
                 .select('*')
                 .eq('is_used', false);
             
-            if (error) throw error;
+            if (error) {
+                // Silent return if table missing to avoid log spam
+                if (error.code === 'PGRST205' || error.message?.includes('relation')) return;
+                throw error;
+            }
+
             if (!addresses || addresses.length === 0) {
                 this.isProcessing = false;
                 return;
@@ -227,11 +248,7 @@ class TronService {
                         sweep_tx_hash: sweepTxHash,
                         swept_at: new Date().toISOString()
                     })
-                    // Since we don't have the txHash of the deposit handy in this scope without passing it,
-                    // we'll skip updating the deposit row with sweep info for now, 
-                    // or better, pass txHash to this function.
-                    // For now, let's just log it. Ideally we should update the row.
-                    .eq('to_address', addrData.tron_address) // Inexact but close enough for this context
+                    .eq('to_address', addrData.tron_address)
                     .eq('status', 'credited'); 
             }
         } catch (error) {

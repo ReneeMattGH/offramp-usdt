@@ -340,11 +340,7 @@ export default function Transactions() {
                           <td className="pr-6">
                             {tx.tx_hash ? (
                               <a
-<<<<<<< HEAD
-                                href={`https://tronscan.org/#/transaction/${tx.tx_hash}`}
-=======
                                 href={`https://nile.tronscan.org/#/transaction/${tx.tx_hash}`}
->>>>>>> ce6f0a8 (Initial commit)
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground font-mono text-xs px-2 py-1 rounded-md hover:bg-muted transition-colors"
@@ -429,11 +425,7 @@ export default function Transactions() {
                           <td className="pr-6">
                             {tx.tx_hash ? (
                               <a
-<<<<<<< HEAD
-                                href={`https://tronscan.org/#/transaction/${tx.tx_hash}`}
-=======
                                 href={`https://nile.tronscan.org/#/transaction/${tx.tx_hash}`}
->>>>>>> ce6f0a8 (Initial commit)
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground font-mono text-xs px-2 py-1 rounded-md hover:bg-muted transition-colors"

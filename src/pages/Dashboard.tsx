@@ -25,11 +25,7 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
-<<<<<<< HEAD
-  const displayBalance = user?.account_number === '24682468' ? 1000 : balance;
-=======
   const displayBalance = balance;
->>>>>>> ce6f0a8 (Initial commit)
 
   useEffect(() => {
     const fetchRecentActivity = async () => {

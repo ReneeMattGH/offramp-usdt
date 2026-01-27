@@ -14,12 +14,8 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Deposit', href: '/deposit', icon: ArrowDownToLine },
-<<<<<<< HEAD
-  { name: 'Exchange', href: '/withdraw', icon: ArrowUpFromLine },
-=======
   { name: 'Exchange (INR)', href: '/withdraw', icon: ArrowUpFromLine },
   { name: 'Withdraw (USDT)', href: '/withdraw-usdt', icon: Wallet },
->>>>>>> ce6f0a8 (Initial commit)
   { name: 'Transactions', href: '/transactions', icon: Receipt },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

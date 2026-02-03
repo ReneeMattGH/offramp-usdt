@@ -106,7 +106,7 @@ const Admin = () => {
 
   const fetchPayoutStatus = async () => {
       try {
-          const response = await fetch("http://localhost:3000/api/admin/payout/control");
+          const response = await fetch("/api/admin/payout/control");
           if (response.ok) {
               const data = await response.json();
               setIsPayoutPaused(data.paused);
@@ -121,28 +121,28 @@ const Admin = () => {
     await fetchPayoutStatus();
     try {
       // Fetch Exchange Orders
-      const eResponse = await fetch("http://localhost:3000/api/admin/exchange/orders");
+      const eResponse = await fetch("/api/admin/exchange/orders");
       if (eResponse.ok) {
         const eData = await eResponse.json();
         setExchangeOrders(eData);
       }
 
       // Fetch KYC Requests
-      const kResponse = await fetch("http://localhost:3000/api/admin/kyc-requests");
+      const kResponse = await fetch("/api/admin/kyc-requests");
       if (kResponse.ok) {
         const kData = await kResponse.json();
         setKycRequests(kData);
       }
 
       // Fetch Deposits
-      const dResponse = await fetch("http://localhost:3000/api/admin/deposits");
+      const dResponse = await fetch("/api/admin/deposits");
       if (dResponse.ok) {
           const dData = await dResponse.json();
           setDeposits(dData);
       }
 
       // Fetch USDT Withdrawals
-      const uResponse = await fetch("http://localhost:3000/api/admin/withdrawals/usdt");
+      const uResponse = await fetch("/api/admin/withdrawals/usdt");
       if (uResponse.ok) {
           const uData = await uResponse.json();
           setUsdtWithdrawals(uData);
@@ -162,7 +162,7 @@ const Admin = () => {
 
   const fetchLogs = async (orderId: string) => {
       try {
-          const response = await fetch(`http://localhost:3000/api/admin/exchange/logs/${orderId}`);
+          const response = await fetch(`/api/admin/exchange/logs/${orderId}`);
           if (response.ok) {
               const data = await response.json();
               setSelectedOrderLogs(data);
@@ -180,7 +180,7 @@ const Admin = () => {
 
   const togglePayoutPause = async () => {
       try {
-          const response = await fetch("http://localhost:3000/api/admin/payout/control", {
+          const response = await fetch("/api/admin/payout/control", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ paused: !isPayoutPaused })
@@ -197,7 +197,7 @@ const Admin = () => {
 
   const toggleUSDTWithdrawalPause = async () => {
       try {
-          const response = await fetch("http://localhost:3000/api/admin/withdrawals/usdt/control", {
+          const response = await fetch("/api/admin/withdrawals/usdt/control", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ paused: !isUSDTWithdrawalPaused })
@@ -230,7 +230,7 @@ const Admin = () => {
 
   const handleExchangeAction = async (id: string, action: "retry" | "refund" | "cancel", reason?: string) => {
     try {
-      const response = await fetch("http://localhost:3000/api/admin/exchange/action", {
+      const response = await fetch("/api/admin/exchange/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order_id: id, action, reason }),
@@ -256,7 +256,7 @@ const Admin = () => {
 
   const handleKycAction = async (userId: string, action: "approve" | "reject") => {
     try {
-      const response = await fetch("http://localhost:3000/api/admin/kyc-action", {
+      const response = await fetch("/api/admin/kyc-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, action }),
@@ -282,7 +282,7 @@ const Admin = () => {
 
   const handleLateDeposit = async (txHash: string) => {
       try {
-          const response = await fetch("http://localhost:3000/api/admin/process-late-deposit", {
+          const response = await fetch("/api/admin/process-late-deposit", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ tx_hash: txHash })
@@ -301,8 +301,8 @@ const Admin = () => {
   const handleUSDTAction = async (id: string, action: "retry" | "cancel", reason?: string) => {
       try {
           const url = action === 'retry' 
-              ? "http://localhost:3000/api/admin/withdrawals/usdt/retry"
-              : "http://localhost:3000/api/admin/withdrawals/usdt/cancel";
+              ? "/api/admin/withdrawals/usdt/retry"
+              : "/api/admin/withdrawals/usdt/cancel";
           
           const response = await fetch(url, {
               method: "POST",

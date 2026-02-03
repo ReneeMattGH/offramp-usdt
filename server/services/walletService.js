@@ -60,6 +60,14 @@ class WalletService {
         }
     }
 
+    async generateWallet() {
+        const account = await tronWeb.createAccount();
+        return {
+            address: account.address.base58,
+            privateKey: encrypt(account.privateKey)
+        };
+    }
+
     async generateDepositAddress(userId, purpose = 'deposit') {
         try {
             // 1. Generate TRON address

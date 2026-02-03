@@ -42,7 +42,7 @@ export default function WithdrawUSDT() {
   useEffect(() => {
     setIdempotencyKey(crypto.randomUUID());
     
-    fetch('http://localhost:3000/api/config/public')
+    fetch('/api/config/public')
       .then(res => res.json())
       .then(data => setConfig(data))
       .catch(err => console.error('Failed to fetch config', err));
@@ -52,7 +52,7 @@ export default function WithdrawUSDT() {
   const fetchWithdrawals = async () => {
     try {
       setLoadingHistory(true);
-      const response = await fetch('http://localhost:3000/api/withdrawals/usdt', {
+      const response = await fetch('/api/withdrawals/usdt', {
         headers: {
           'Authorization': `Bearer ${sessionToken}`
         }
@@ -115,7 +115,7 @@ export default function WithdrawUSDT() {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch('http://localhost:3000/api/withdraw/usdt', {
+      const response = await fetch('/api/withdraw/usdt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

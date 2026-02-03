@@ -227,7 +227,7 @@ export function WithdrawalModal({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:3000/api/withdraw', {
+      const response = await fetch('/api/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

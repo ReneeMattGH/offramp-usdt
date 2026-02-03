@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
 // Pages
-import Auth from "./pages/Auth";
+// import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Deposit from "./pages/Deposit";
 import Withdraw from "./pages/Withdraw";
@@ -35,7 +35,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
+            <h1 className="text-2xl font-bold text-destructive">Authentication Failed</h1>
+            <p className="text-muted-foreground">Could not log in automatically to the demo account.</p>
+            <div className="flex gap-4">
+                <button 
+                    onClick={() => window.location.reload()} 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                >
+                    Retry
+                </button>
+                <button 
+                    onClick={() => {
+                        localStorage.clear();
+                        window.location.reload();
+                    }} 
+                    className="px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded transition-colors"
+                >
+                    Reset & Retry
+                </button>
+            </div>
+        </div>
+    );
   }
 
   return <>{children}</>;
@@ -68,13 +90,8 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<Navigate to="/auth" replace />} />
-      <Route path="/auth" element={
-        <PublicRoute>
-          <Auth />
-        </PublicRoute>
-      } />
-
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      
       {/* Protected routes */}
       <Route path="/dashboard" element={
         <ProtectedRoute>

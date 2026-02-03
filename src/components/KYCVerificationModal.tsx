@@ -44,7 +44,7 @@ export function KYCVerificationModal({
 
     try {
       // Call backend to process KYC
-      const response = await fetch('http://localhost:3000/api/verify-kyc', {
+      const response = await fetch('/api/verify-kyc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

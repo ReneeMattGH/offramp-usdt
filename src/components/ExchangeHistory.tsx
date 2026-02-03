@@ -23,7 +23,7 @@ export function ExchangeHistory() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/exchange/orders', {
+      const response = await fetch('/api/exchange/orders', {
         headers: {
           'Authorization': `Bearer ${sessionToken}`
         }

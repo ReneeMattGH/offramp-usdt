@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('session_token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:3000/api/auth/me', {
+      const response = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,6 +60,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const autoLogin = async () => {
+    try {
+      const response = await fetch('/api/auth/guest-login', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      
+      if (data.user && data.token) {
+        localStorage.setItem('session_token', data.token);
+        localStorage.setItem('user_id', data.user.id);
+        setUser(data.user as unknown as User);
+        setSessionToken(data.token);
+      }
+    } catch (err) {
+      console.error('Auto login failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Check for existing session on load
     const storedToken = localStorage.getItem('session_token');
@@ -68,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedToken && storedUserId) {
       validateSession(storedToken, storedUserId);
     } else {
-      setIsLoading(false);
+      autoLogin();
     }
     
     // Subscribe to realtime changes for the user

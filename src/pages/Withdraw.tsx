@@ -24,7 +24,7 @@ export default function Withdraw() {
   const fetchRate = async () => {
     try {
       setLoadingRate(true);
-      const response = await fetch('http://localhost:3000/api/exchange/rate');
+      const response = await fetch('/api/exchange/rate');
       const data = await response.json();
       if (data.rate) {
         setRate(data.rate);
@@ -60,7 +60,7 @@ export default function Withdraw() {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch('http://localhost:3000/api/exchange/create', {
+      const response = await fetch('/api/exchange/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

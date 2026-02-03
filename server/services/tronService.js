@@ -117,6 +117,12 @@ class TronService {
     async processTransaction(tx, addrData) {
         const txHash = tx.transaction_id;
         const amount = parseFloat(tx.value) / 1000000; // Assuming 6 decimals for USDT
+        
+        if (amount <= 0) {
+             console.warn(`Skipping zero amount transaction: ${txHash}`);
+             return;
+        }
+
         const tokenSymbol = tx.token_info.symbol;
         const blockNumber = tx.block_timestamp; // Using timestamp as proxy if block_number missing
         

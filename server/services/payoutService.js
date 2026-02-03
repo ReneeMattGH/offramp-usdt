@@ -7,12 +7,19 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const configService = require('./configService');
+
 class PayoutService {
     constructor() {
         this.isProcessing = false;
         this.isPaused = false;
         this.provider = new RazorpayProvider(); // Initialize Provider
-        this.EXCHANGE_RATE = 92.0; // Fixed rate for now, or fetch from DB/API
+        
+        // Mock Gateway Settings (Fallback)
+        this.mockGateway = {
+            successRate: 0.9, // 90% success
+            latency: 2000     // 2 seconds
+        };
     }
 
     setPaused(paused) {
@@ -20,57 +27,9 @@ class PayoutService {
         console.log(`[Payout] System ${paused ? 'PAUSED' : 'RESUMED'}`);
     }
 
-    // 1. Request Payout
+    // Deprecated: Use ExchangeService for full flow
     async requestPayout(userId, usdtAmount, bankAccountId) {
-        if (this.isPaused) throw new Error('Payouts are currently paused');
-
-        const inrAmount = usdtAmount * this.EXCHANGE_RATE;
-        const idempotencyKey = uuidv4();
-
-        // Check for existing active payout (Double-Spend Protection)
-        const { data: activeOrder, error: checkError } = await supabase
-            .from('payout_orders')
-            .select('id')
-            .eq('user_id', userId)
-            .in('status', ['PENDING', 'PROCESSING'])
-            .maybeSingle();
-
-        if (activeOrder) {
-            throw new Error('You already have a pending payout. Please wait for it to complete.');
-        }
-
-        // 1. Create Order (PENDING)
-        const { data: order, error: createError } = await supabase
-            .from('payout_orders')
-            .insert({
-                user_id: userId,
-                usdt_amount: usdtAmount,
-                inr_amount: inrAmount,
-                exchange_rate: this.EXCHANGE_RATE,
-                bank_account_id: bankAccountId,
-                status: 'PENDING',
-                idempotency_key: idempotencyKey
-            })
-            .select()
-            .single();
-
-        if (createError) throw createError;
-
-        console.log(`Payout Order Created: ${order.id} (${usdtAmount} USDT -> ${inrAmount} INR)`);
-
-        // 2. Lock Funds (Atomic)
-        const lockResult = await ledgerService.lockPayoutFunds(userId, usdtAmount, order.id);
-        
-        if (!lockResult.success) {
-            // Failed to lock -> Fail Order immediately
-            await supabase
-                .from('payout_orders')
-                .update({ status: 'FAILED', failure_reason: lockResult.message || 'Insufficient funds' })
-                .eq('id', order.id);
-            throw new Error(lockResult.message || 'Insufficient funds');
-        }
-
-        return order;
+        throw new Error('Please use ExchangeService to create exchange orders.');
     }
 
     // Worker Loop
@@ -82,14 +41,18 @@ class PayoutService {
 
     async processQueue() {
         if (this.isProcessing || this.isPaused) return;
+
+        // Check config if payouts are globally enabled (optional)
+        // const config = configService.getAll();
+        // if (!config.payouts_enabled) return; 
+
         this.isProcessing = true;
 
         try {
-            // Fetch PENDING orders that have funds locked (implicit by flow, but good to verify if needed)
-            // Actually, requestPayout locks funds. So we just need to pick up PENDING orders.
+            // Fetch PENDING orders
             const { data: order, error } = await supabase
                 .from('payout_orders')
-                .select('*')
+                .select('*, users(*), bank_accounts(*)') // Fetch user and bank details
                 .eq('status', 'PENDING')
                 .order('created_at', { ascending: true })
                 .limit(1)
@@ -101,7 +64,20 @@ class PayoutService {
                 return;
             }
 
-            console.log(`Processing Payout ${order.id}...`);
+            console.log(`Processing Payout ${order.id} for User ${order.user_id}...`);
+
+            // Check if bank account exists
+            if (!order.bank_accounts) {
+                 console.error(`Payout ${order.id} Missing Bank Account Details. Failing.`);
+                 await supabase
+                    .from('payout_orders')
+                    .update({ status: 'FAILED', failure_reason: 'Missing Bank Account Details' })
+                    .eq('id', order.id);
+                 
+                 // Refund
+                 await ledgerService.failPayout(order.user_id, order.usdt_amount, order.id);
+                 return;
+            }
 
             // Mark as PROCESSING
             await supabase
@@ -109,8 +85,16 @@ class PayoutService {
                 .update({ status: 'PROCESSING', updated_at: new Date() })
                 .eq('id', order.id);
 
-            // Simulate Bank Gateway
-            const result = await this.simulateGateway(order);
+            // Execute Payout (Provider or Mock)
+            let result;
+            if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+                // Pass bank details to provider
+                const bankDetails = order.bank_accounts;
+                result = await this.provider.initiatePayout(order, order.users, bankDetails);
+            } else {
+                console.warn('Razorpay Keys Missing - Using Mock Gateway');
+                result = await this.simulateGateway(order);
+            }
 
             // Handle Result
             await this.handleGatewayResponse(order, result);

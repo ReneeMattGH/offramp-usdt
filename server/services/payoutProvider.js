@@ -8,7 +8,7 @@ class RazorpayProvider {
         this.account_number = process.env.BANK_ACCOUNT_NUMBER;
     }
 
-    async initiatePayout(order, user) {
+    async initiatePayout(order, user, bankDetails) {
         if (!this.key_id || !this.key_secret || !this.account_number) {
             console.error('[RazorpayProvider] Missing API Keys or Account Number');
             return {
@@ -27,51 +27,53 @@ class RazorpayProvider {
 
             let fundAccountId = user.razorpay_fund_account_id;
 
-            // 1. Create Fund Account if needed
-            if (!fundAccountId) {
-                console.log('[RazorpayProvider] Creating Fund Account...');
-                
-                // A. Create Contact
-                let contactId = user.razorpay_contact_id;
-                if (!contactId) {
-                    const contactRes = await fetch('https://api.razorpay.com/v1/contacts', {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({
-                            name: user.account_holder_name,
-                            type: "customer",
-                            reference_id: user.id
-                        })
-                    });
-                    const contactData = await contactRes.json();
-                    if (!contactRes.ok) throw new Error(contactData.error?.description || 'Contact Creation Failed');
-                    contactId = contactData.id;
-
-                    // Update User
-                    await supabase.from('users').update({ razorpay_contact_id: contactId }).eq('id', user.id);
-                }
-
-                // B. Create Fund Account
-                const faRes = await fetch('https://api.razorpay.com/v1/fund_accounts', {
+            // We need to ensure the fund account matches the specific bank account used for this order
+            // Ideally, we should store `razorpay_fund_account_id` on the `bank_accounts` table, not `users`.
+            // For now, if bankDetails are provided, we should create a new Fund Account for it if not cached.
+            
+            // Check if this bank account already has a fund account ID (assuming we added a column or checking cache)
+            // Since we haven't added the column to `bank_accounts`, we'll generate it dynamically.
+            // Note: In production, store `razorpay_fund_account_id` on `bank_accounts` table to avoid re-creation.
+            
+            console.log('[RazorpayProvider] Creating Fund Account for Bank Account:', bankDetails.account_number);
+            
+            // A. Create Contact (Reuse user contact if possible)
+            let contactId = user.razorpay_contact_id;
+            if (!contactId) {
+                const contactRes = await fetch('https://api.razorpay.com/v1/contacts', {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({
-                        contact_id: contactId,
-                        account_type: "bank_account",
-                        bank_account: {
-                            name: user.account_holder_name,
-                            ifsc: user.ifsc_code,
-                            account_number: user.account_number
-                        }
+                        name: user.account_holder_name,
+                        type: "customer",
+                        reference_id: user.id
                     })
                 });
-                const faData = await faRes.json();
-                if (!faRes.ok) throw new Error(faData.error?.description || 'Fund Account Creation Failed');
-                fundAccountId = faData.id;
+                const contactData = await contactRes.json();
+                if (!contactRes.ok) throw new Error(contactData.error?.description || 'Contact Creation Failed');
+                contactId = contactData.id;
 
                 // Update User
-                await supabase.from('users').update({ razorpay_fund_account_id: fundAccountId }).eq('id', user.id);
+                await supabase.from('users').update({ razorpay_contact_id: contactId }).eq('id', user.id);
             }
+
+            // B. Create Fund Account for specific bank details
+            const faRes = await fetch('https://api.razorpay.com/v1/fund_accounts', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    contact_id: contactId,
+                    account_type: "bank_account",
+                    bank_account: {
+                        name: bankDetails.account_holder_name,
+                        ifsc: bankDetails.ifsc_code,
+                        account_number: bankDetails.account_number
+                    }
+                })
+            });
+            const faData = await faRes.json();
+            if (!faRes.ok) throw new Error(faData.error?.description || 'Fund Account Creation Failed');
+            fundAccountId = faData.id;
 
             // 2. Initiate Payout
             const requestPayload = {

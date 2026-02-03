@@ -5,10 +5,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const ledgerService = require('./ledgerService');
+const configService = require('./configService');
 
-// Cache for rate (Simple in-memory cache for demo)
+// Cache for rate
 let cachedRate = {
-    rate: 88.50, // Default fallback
+    rate: 92.00, // Safe default fallback
     lastUpdated: 0
 };
 
@@ -17,31 +18,56 @@ class ExchangeService {
     async getLiveRate() {
         const now = Date.now();
         const CACHE_DURATION = 10000; // 10 seconds
+        const config = configService.getAll();
+        const spreadPercent = config.exchange_spread_percent || 0;
 
-        if (now - cachedRate.lastUpdated < CACHE_DURATION) {
-            return cachedRate.rate;
+        let marketRate = cachedRate.rate;
+
+        if (now - cachedRate.lastUpdated >= CACHE_DURATION) {
+            try {
+                console.log('Fetching live USDT/INR rate...');
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=inr');
+                
+                if (!response.ok) {
+                    throw new Error(`Rate fetch failed: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (data.tether && data.tether.inr) {
+                    const newRate = data.tether.inr;
+                    console.log(`Live Rate Updated: ${newRate} INR/USDT`);
+                    
+                    cachedRate = {
+                        rate: newRate,
+                        lastUpdated: now
+                    };
+                    marketRate = newRate;
+                } else {
+                    throw new Error('Invalid rate data format');
+                }
+            } catch (error) {
+                console.error('Rate Fetch Error:', error.message);
+                // Continue with cached rate
+            }
         }
 
-        // TODO: Integrate real API (e.g., CoinGecko, Binance)
-        // For now, simulate small fluctuation around 88-90
-        const baseRate = 89.00;
-        const fluctuation = (Math.random() - 0.5) * 0.5; // +/- 0.25
-        const newRate = Number((baseRate + fluctuation).toFixed(2));
-
-        cachedRate = {
-            rate: newRate,
-            lastUpdated: now
-        };
-
-        return newRate;
+        // Apply Spread (We pay less than market)
+        // User gets: Market Rate * (1 - spread/100)
+        const userRate = marketRate * (1 - (spreadPercent / 100));
+        return Number(userRate.toFixed(2));
     }
 
-    async createExchangeOrder(userId, usdtAmount) {
+    async createExchangeOrder(userId, usdtAmount, bankAccountId) {
         try {
+            const config = configService.getAll();
+            if (!config.exchanges_enabled) {
+                throw new Error('Exchanges are currently paused by admin');
+            }
+
             // 1. Get Locked Rate
             const rate = await this.getLiveRate();
             const inrAmount = Number((usdtAmount * rate).toFixed(2));
-            const idempotencyKey = uuidv4(); // Generate one if frontend doesn't provide (or use passed one)
+            const idempotencyKey = uuidv4(); 
 
             // 2. Call Atomic RPC
             const { data: orderId, error } = await supabase.rpc('create_exchange_order', {
@@ -49,50 +75,12 @@ class ExchangeService {
                 p_usdt_amount: usdtAmount,
                 p_inr_amount: inrAmount,
                 p_rate: rate,
+                p_bank_account_id: bankAccountId,
                 p_idempotency_key: idempotencyKey
             });
 
             if (error) {
-                // Fallback for missing RPC
-                // We'll be more permissive with the check to ensure fallback triggers
-                console.warn('RPC create_exchange_order failed:', error.message);
-                
-                if (true) { // Always try fallback if RPC fails for now (since we know it's missing)
-                     console.warn('Falling back to non-atomic flow');
-                     
-                     // Generate ID
-                     const fallbackOrderId = uuidv4();
-
-                     // 1. Lock Funds
-                     await ledgerService.lockFundsForExchange(userId, usdtAmount, fallbackOrderId);
-
-                     // 2. Create Order
-                     const { error: insertError } = await supabase.from('exchange_orders').insert({
-                         id: fallbackOrderId,
-                         user_id: userId,
-                         usdt_amount: usdtAmount,
-                         inr_amount: inrAmount,
-                         rate: rate,
-                         status: 'PENDING',
-                         idempotency_key: idempotencyKey,
-                         rate_locked: rate
-                     });
-
-                     if (insertError) {
-                         // Rollback lock if insert fails (manual rollback needed)
-                         // For now, just throw
-                         throw insertError;
-                     }
-                     
-                     return {
-                        success: true,
-                        order_id: fallbackOrderId,
-                        usdt_amount: usdtAmount,
-                        inr_amount: inrAmount,
-                        rate: rate,
-                        status: 'PENDING'
-                     };
-                }
+                console.error('RPC create_exchange_order failed:', error);
                 throw error;
             }
 
@@ -106,20 +94,9 @@ class ExchangeService {
             };
 
         } catch (error) {
-            console.error('Create Exchange Order Error:', error);
-            return { success: false, error: error.message };
+            console.error('Exchange Order Failed:', error);
+            throw error;
         }
-    }
-
-    async getUserOrders(userId) {
-        const { data, error } = await supabase
-            .from('exchange_orders')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        return data;
     }
 }
 

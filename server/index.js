@@ -18,6 +18,7 @@ const kycService = require('./services/kycService');
 const auditService = require('./services/auditService');
 const complianceService = require('./services/complianceService');
 const withdrawalWorker = require('./services/withdrawalWorker');
+const configService = require('./services/configService');
 
 const app = express();
 app.use(cors());
@@ -45,6 +46,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
         tronService.startListener();
         payoutService.startWorker();
         withdrawalWorker.start();
+        await configService.loadConfig();
         console.log('Services Initialized.');
     } catch (error) {
         console.error('Error initializing services:', error);
@@ -202,28 +204,30 @@ app.get('/api/admin/deposits', async (req, res) => {
 
 // --- Public Config ---
 app.get('/api/config/public', (req, res) => {
+    const config = configService.getAll();
     res.json({
-        usdt_withdrawal_fee: globalConfig.fee,
-        min_usdt_withdrawal: globalConfig.min_usdt_withdrawal,
-        daily_withdrawal_limit: globalConfig.daily_limit,
-        withdrawals_enabled: globalConfig.withdrawals_enabled
+        usdt_withdrawal_fee: config.usdt_withdrawal_fee,
+        min_usdt_withdrawal: config.min_usdt_withdrawal,
+        daily_withdrawal_limit: config.daily_withdrawal_limit,
+        withdrawals_enabled: config.withdrawals_enabled,
+        deposits_enabled: config.deposits_enabled,
+        exchanges_enabled: config.exchanges_enabled
     });
 });
 
-// Admin: Toggle Withdrawals
-app.post('/api/admin/config/toggle-withdrawals', async (req, res) => {
-    // Ideally add admin auth middleware here
-    const { enabled } = req.body;
-    if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'Invalid value' });
-    
-    globalConfig.withdrawals_enabled = enabled;
-    // Log audit
-    // Assuming we have user context, if not, we use 'system' or passed admin id
-    // For now, let's assume this is called by an admin panel with auth
-    // We'll just log as 'system' or 'admin' if we had the ID.
-    // Since this endpoint is new and might be called via curl for now, we'll keep it simple.
-    console.log(`[CONFIG] Withdrawals enabled set to ${enabled}`);
-    res.json({ success: true, enabled: globalConfig.withdrawals_enabled });
+// Admin: Update System Config
+app.post('/api/admin/config/update', async (req, res) => {
+    try {
+        const result = await configService.update(req.body);
+        if (result.success) {
+            await auditService.log('admin', null, 'CONFIG_UPDATE', null, req.body, req.clientIp);
+            res.json(result);
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // --- USDT Withdrawal Endpoints ---
@@ -426,6 +430,83 @@ app.post('/api/admin/withdrawals/usdt/action', async (req, res) => {
 });
 
 
+// --- Bank Account Management ---
+
+app.get('/api/bank-accounts', authMiddleware, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('bank_accounts')
+            .select('*')
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        // Handle missing table gracefully if migration hasn't run
+        if (err.code === 'PGRST205' || err.message?.includes('relation')) {
+            return res.json([]);
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/bank-accounts', authMiddleware, requireKycApproved, async (req, res) => {
+    const { account_number, ifsc_code, account_holder_name, is_primary } = req.body;
+
+    if (!account_number || !ifsc_code || !account_holder_name) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        // If this is set to primary, unset others
+        if (is_primary) {
+            await supabase
+                .from('bank_accounts')
+                .update({ is_primary: false })
+                .eq('user_id', req.user.id);
+        }
+
+        const { data, error } = await supabase
+            .from('bank_accounts')
+            .insert({
+                user_id: req.user.id,
+                account_number,
+                ifsc_code,
+                account_holder_name,
+                is_primary: is_primary || false
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        
+        await auditService.log('user', req.user.id, 'BANK_ADD', data.id, { account_number: '****' + account_number.slice(-4) }, req.clientIp);
+        
+        res.json(data);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.delete('/api/bank-accounts/:id', authMiddleware, async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('bank_accounts')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('user_id', req.user.id);
+
+        if (error) throw error;
+        
+        await auditService.log('user', req.user.id, 'BANK_DELETE', req.params.id, null, req.clientIp);
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- Exchange & Payout System ---
 
 app.get('/api/exchange/rate', async (req, res) => {
@@ -442,17 +523,21 @@ app.get('/api/exchange/rate', async (req, res) => {
 });
 
 app.post('/api/exchange/create', authMiddleware, requireKycApproved, async (req, res) => {
-    const { usdt_amount } = req.body;
+    const { usdt_amount, bank_account_id } = req.body;
     
     if (!usdt_amount || usdt_amount <= 0) {
         return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    if (!bank_account_id) {
+        return res.status(400).json({ error: 'Bank Account ID is required' });
     }
 
     try {
         // Compliance Check
         await complianceService.checkExchangeLimit(req.user.id, usdt_amount);
 
-        const result = await exchangeService.createExchangeOrder(req.user.id, usdt_amount);
+        const result = await exchangeService.createExchangeOrder(req.user.id, usdt_amount, bank_account_id);
         
         if (result.success) {
             await auditService.log('user', req.user.id, 'EXCHANGE_CREATE', result.orderId, { usdt_amount, rate: result.rate }, req.clientIp);
@@ -477,6 +562,106 @@ app.get('/api/exchange/orders', authMiddleware, async (req, res) => {
 
 // --- Admin Endpoints ---
 
+// Admin: Get All Users
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin: Ban/Unban User
+app.post('/api/admin/users/:id/ban', async (req, res) => {
+    const { ban } = req.body; // true to ban, false to unban
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({ is_banned: ban })
+            .eq('id', req.params.id);
+            
+        if (error) throw error;
+        await auditService.log('admin', null, ban ? 'USER_BAN' : 'USER_UNBAN', req.params.id, {}, req.clientIp);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin: Manual KYC Action
+app.post('/api/admin/users/:id/kyc', async (req, res) => {
+    const { status, reason } = req.body; // 'approved', 'rejected'
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({ 
+                kyc_status: status,
+                kyc_rejection_reason: reason || null,
+                kyc_verified_at: status === 'approved' ? new Date() : null
+            })
+            .eq('id', req.params.id);
+            
+        if (error) throw error;
+        await auditService.log('admin', null, 'KYC_MANUAL_UPDATE', req.params.id, { status, reason }, req.clientIp);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin: Stats
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        // 1. Total Volume (Deposits)
+        const { data: deposits } = await supabase
+            .from('blockchain_transactions')
+            .select('amount')
+            .eq('status', 'credited');
+        const totalDeposits = deposits ? deposits.reduce((sum, tx) => sum + parseFloat(tx.amount), 0) : 0;
+
+        // 2. Total Volume (Withdrawals)
+        const { data: withdrawals } = await supabase
+            .from('usdt_withdrawals')
+            .select('usdt_amount')
+            .eq('status', 'completed');
+        const totalWithdrawals = withdrawals ? withdrawals.reduce((sum, tx) => sum + parseFloat(tx.usdt_amount), 0) : 0;
+
+        // 3. Pending Payouts
+        const { count: pendingPayoutsCount } = await supabase
+            .from('payout_orders')
+            .select('id', { count: 'exact' })
+            .eq('status', 'PENDING');
+
+        // 4. Treasury Balance (System Wallet)
+        // This is tricky if we don't have a direct way to query TRON node.
+        // We can use the walletService or tronService if they expose a balance check.
+        // For now, we'll return what we know from DB or mock.
+        // Or we can return the 'system' wallet balance from 'wallets' table if we are tracking it there.
+        const { data: systemWallet } = await supabase
+            .from('wallets')
+            .select('balance, address')
+            .eq('type', 'system')
+            .maybeSingle();
+
+        res.json({
+            total_deposits_usdt: totalDeposits,
+            total_withdrawals_usdt: totalWithdrawals,
+            pending_payouts_count: pendingPayoutsCount || 0,
+            treasury_balance: systemWallet ? systemWallet.balance : 0,
+            treasury_address: systemWallet ? systemWallet.address : null
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Get All Exchange Orders
 app.get('/api/admin/exchange/orders', async (req, res) => {
     try {
@@ -496,20 +681,19 @@ app.get('/api/admin/exchange/orders', async (req, res) => {
     }
 });
 
-// Get Payout Logs
+// Get Payout Logs (Audit)
 app.get('/api/admin/exchange/logs/:order_id', async (req, res) => {
     try {
         const { data, error } = await supabase
-            .from('payout_attempts')
+            .from('audit_logs')
             .select('*')
-            .eq('exchange_order_id', req.params.order_id)
+            .eq('reference_id', req.params.order_id)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
         res.json(data);
     } catch (err) {
-        if (err.code === 'PGRST205' || err.message?.includes('relation') || err.message?.includes('does not exist')) {
-             console.warn('Admin Logs: Table missing, returning empty list');
+        if (err.code === 'PGRST205' || err.message?.includes('relation')) {
              return res.json([]);
         }
         res.status(500).json({ error: err.message });

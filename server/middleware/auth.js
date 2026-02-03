@@ -18,19 +18,6 @@ async function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
 
     try {
-        // FALLBACK: Special Token for broken DB state
-        if (token === 'fallback-token') {
-            req.user = {
-                id: '00000000-0000-0000-0000-000000000000',
-                email: 'demo@example.com',
-                account_holder_name: 'Demo User (Offline)',
-                account_number: 'DEMO_OFFLINE',
-                role: 'authenticated',
-                kyc_status: 'approved'
-            };
-            return next();
-        }
-
         // 1. Verify Session
         let session = null;
         try {
@@ -41,19 +28,10 @@ async function authMiddleware(req, res, next) {
                 .gt('expires_at', new Date().toISOString())
                 .single();
             
-            if (sessionError) {
-                 // If table missing, maybe check memory? 
-                 // For now, treat as invalid unless we implement memory sessions.
-                 if (sessionError.code === 'PGRST205' || sessionError.message?.includes('relation')) {
-                     console.warn('Sessions table missing in Auth Middleware. Denying access unless fallback token used.');
-                 }
-                 throw sessionError;
-            }
+            if (sessionError) throw sessionError;
             session = data;
         } catch (e) {
-             // If we want to allow login even if sessions table is missing, we'd need to change guest-login to return a signed JWT or something self-validating.
-             // But for now, we rely on the fallback-token mechanism if DB is totally broken.
-             return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+            return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
         }
 
         if (!session) {
@@ -69,12 +47,6 @@ async function authMiddleware(req, res, next) {
 
         if (userError || !user) {
             return res.status(401).json({ error: 'Unauthorized: User not found' });
-        }
-
-        // MOCK OVERRIDE: Check in-memory store for KYC status
-        if (kycStatusStore[user.id]) {
-            user.kyc_status = kycStatusStore[user.id];
-            console.log(`[AUTH] Applied Mock KYC Status for ${user.id}: ${user.kyc_status}`);
         }
 
         // 3. Attach User to Request

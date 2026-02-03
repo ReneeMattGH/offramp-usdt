@@ -24,7 +24,7 @@ try {
         fullNode: TRON_FULL_NODE,
         solidityNode: TRON_SOLIDITY_NODE,
         eventServer: TRON_EVENT_SERVER,
-        privateKey: '01'.repeat(32), // Dummy key for read-only if needed
+        // No private key needed for read-only operations
     });
 } catch (e) {
     console.error('Failed to initialize TronWeb:', e);
@@ -65,8 +65,7 @@ class TronService {
                 .eq('is_used', false);
             
             if (error) {
-                // Silent return if table missing to avoid log spam
-                if (error.code === 'PGRST205' || error.message?.includes('relation')) return;
+                console.error('Tron Listener Error (DB Check):', error);
                 throw error;
             }
 

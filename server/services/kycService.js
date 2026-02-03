@@ -1,7 +1,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const auditService = require('./auditService');
-const { kycStatusStore } = require('../utils/mockStore');
+require('dotenv').config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,8 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 class KycService {
     constructor() {
-        this.mode = process.env.KYC_MODE || 'DUMMY';
-        this.dummyApprovedAadhaars = ['123456789012', '999988887777'];
+        this.mode = process.env.KYC_MODE || 'MANUAL'; // Default to Manual Review
     }
 
     async submitKyc(userId, data, ipAddress) {
@@ -32,21 +31,10 @@ class KycService {
         let providerResponse = {};
 
         // 2. Verification Logic
-        if (this.mode === 'DUMMY') {
-            console.log(`[KYC] Running DUMMY verification for ${aadhaar_number}`);
-            if (this.dummyApprovedAadhaars.includes(aadhaar_number)) {
-                status = 'approved';
-                verifiedAt = new Date().toISOString();
-                providerResponse = { message: 'Dummy Auto-Approval' };
-            } else {
-                status = 'rejected';
-                rejectionReason = 'Identity could not be verified (Dummy Check Failed)';
-                providerResponse = { message: 'Dummy Auto-Rejection' };
-            }
-        } else {
-            // TODO: Implement Real Provider (e.g. Zoop/Karza)
-            throw new Error('Real KYC Provider not configured yet');
-        }
+        // In a real system, we would call an external API here (e.g. Zoop, Karza)
+        // For now, we store it as 'pending' for Manual Review or Webhook update.
+        console.log(`[KYC] KYC Submitted for ${aadhaar_number}. Status: PENDING (Waiting for Review/Provider)`);
+        providerResponse = { message: 'Submitted for Verification' };
 
         // 3. Update User Table
         const { error: userError } = await supabase
@@ -60,20 +48,10 @@ class KycService {
             .eq('id', userId);
 
         if (userError) {
-            // FALLBACK: If columns are missing (migrations not run), log warning but allow flow to continue for DEMO
-            if (userError.code === '42703' || userError.message?.includes('column')) {
-                 console.warn('[KYC] Database schema mismatch (missing columns). KYC status NOT persisted.');
-                 // MOCK STORE UPDATE FOR DEV/DEMO
-                 kycStatusStore[userId] = status;
-                 console.log(`[KYC] Mock Store Updated: User ${userId} -> ${status}`);
-            } else {
-                 throw userError;
-            }
+             console.error('[KYC] Database update failed:', userError);
+             throw userError;
         }
         
-        // Also update mock store on success to be safe/consistent
-        kycStatusStore[userId] = status;
-
         // 4. Create KYC Record (Audit Trail)
         // Mask Aadhaar: XXXXXXXX1234
         const maskedAadhaar = 'XXXXXXXX' + aadhaar_number.slice(-4);

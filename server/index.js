@@ -84,7 +84,8 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
                 .maybeSingle();
     
             if (error) {
-                console.warn('Guest Login: Error checking user, proceeding with mock fallback if needed:', error.message);
+                console.error('Guest Login: Error checking user:', error.message);
+                throw error;
             }
     
             // 2. Create if not exists
@@ -109,31 +110,8 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
                     if (createError) throw createError;
                     user = newUser;
                 } catch (insertError) {
-                    console.warn('Guest Login: Full user insert failed, trying minimal insert:', insertError.message);
-                    
-                    // Fallback: Minimal Insert (in case columns are missing)
-                    const { data: minimalUser, error: minimalError } = await supabase
-                        .from('users')
-                        .insert({
-                            account_holder_name: 'Demo User',
-                            account_number: accountNumber,
-                            ifsc_code: 'DEMO0000001'
-                        })
-                        .select()
-                        .single();
-                        
-                    if (minimalError) {
-                        console.error('Guest Login: Minimal insert failed:', minimalError);
-                        // Emergency Fallback: Return Memory User (No DB persistence)
-                        user = {
-                            id: uuidv4(),
-                            account_holder_name: 'Demo User (Memory)',
-                            account_number: accountNumber,
-                            tron_wallet_address: walletAddress.address
-                        };
-                    } else {
-                        user = minimalUser;
-                    }
+                    console.error('Guest Login: User creation failed:', insertError);
+                    throw insertError;
                 }
             }
     
@@ -141,37 +119,24 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
             const token = uuidv4();
             const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
     
-            try {
-                // If user is virtual (no ID in DB), skip session insert
-                if (user.id) {
-                    const { error: sessionError } = await supabase
-                        .from('sessions')
-                        .insert({
-                            user_id: user.id,
-                            token,
-                            expires_at: expiresAt
-                        });
-            
-                    if (sessionError) console.warn('Guest Login: Session insert failed:', sessionError.message);
-                }
-            } catch (sessionErr) {
-                console.warn('Guest Login: Session creation error:', sessionErr);
+            const { error: sessionError } = await supabase
+                .from('sessions')
+                .insert({
+                    user_id: user.id,
+                    token,
+                    expires_at: expiresAt
+                });
+    
+            if (sessionError) {
+                console.error('Guest Login: Session insert failed:', sessionError);
+                throw sessionError;
             }
     
-            // Return user and token (even if session insert failed, token works for this request context if we mock middleware)
             res.json({ user, token });
     
         } catch (err) {
-            console.error('Guest Login Critical Error:', err);
-            // Absolute final fallback to prevent "Authentication Failed" screen
-            res.json({
-                user: {
-                    id: '00000000-0000-0000-0000-000000000000',
-                    account_holder_name: 'Demo User (Fallback)',
-                    account_number: 'DEMO_FALLBACK'
-                },
-                token: 'fallback-token'
-            });
+            console.error('Guest Login Failed:', err);
+            res.status(500).json({ error: 'Login failed. Database configuration required.' });
         }
     });
 
@@ -184,6 +149,7 @@ app.get('/api/wallet/balance', authMiddleware, async (req, res) => {
         const balance = await ledgerService.getWalletBalance(req.user.id);
         res.json(balance);
     } catch (err) {
+        console.error('Wallet Balance Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -229,9 +195,7 @@ app.get('/api/admin/deposits', async (req, res) => {
         if (error) throw error;
         res.json(data);
     } catch (err) {
-        if (err.code === 'PGRST205' || err.message?.includes('relation')) {
-             return res.json([]); 
-         }
+        console.error('Admin Deposits Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

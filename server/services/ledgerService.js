@@ -15,13 +15,10 @@ class LedgerService {
                 .select('*')
                 .eq('user_id', userId)
                 .maybeSingle();
-                
+            
             if (error) {
-                 // If table is missing, just ignore (Dev/Fallback mode)
-                 if (error.code === 'PGRST205' || (error.message && error.message.includes('relation'))) {
-                     return; 
-                 }
                  console.error('Ensure Account Check Error:', error);
+                 throw error;
             }
 
             if (!data) {
@@ -32,12 +29,13 @@ class LedgerService {
                     settled_balance: 0
                 });
                 if (insertError) {
-                    if (insertError.code === 'PGRST205' || (insertError.message && insertError.message.includes('relation'))) return;
                     console.error('Ensure Account Create Error:', insertError);
+                    throw insertError;
                 }
             }
         } catch (e) {
-            console.warn('ensureAccount failed (likely DB connection issue), proceeding safely:', e.message);
+            console.error('ensureAccount failed:', e.message);
+            throw e;
         }
     }
 
@@ -47,7 +45,7 @@ class LedgerService {
             const { data, error } = await supabase.rpc('get_calculated_balance', { p_user_id: userId });
             
             if (error) {
-                // Fallback to cached if RPC fails
+                // If RPC missing, try direct table read
                 if (error.code === 'PGRST205' || error.message?.includes('function')) {
                      return this._getWalletBalanceFallback(userId);
                 }
@@ -61,43 +59,37 @@ class LedgerService {
             };
         } catch (err) {
             console.error('Get Wallet Balance Error:', err);
-            return this._getWalletBalanceFallback(userId);
+            throw err;
         }
     }
 
     async _getWalletBalanceFallback(userId) {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('ledger_accounts')
             .select('available_balance, locked_balance')
             .eq('user_id', userId)
             .single();
             
+        if (error) throw error;
+
         return {
             available: parseFloat(data?.available_balance || 0),
             locked: parseFloat(data?.locked_balance || 0),
-            is_consistent: true // Assumed in fallback
+            is_consistent: true
         };
     }
 
     // Get Ledger History
     async getLedgerHistory(userId, limit = 50) {
-        try {
-            const { data, error } = await supabase
-                .from('ledger_entries')
-                .select('*')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false })
-                .limit(limit);
-            
-            if (error) throw error;
-            return data;
-        } catch (err) {
-            if (err.code === 'PGRST205' || err.message?.includes('relation')) {
-                console.warn('ledger_entries table missing. Returning empty history.');
-                return [];
-            }
-            throw err;
-        }
+        const { data, error } = await supabase
+            .from('ledger_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        
+        if (error) throw error;
+        return data;
     }
 
     // Credit Engine: Deposit USDT
@@ -124,21 +116,6 @@ class LedgerService {
 
         } catch (error) {
             console.error('Credit Deposit Error:', error);
-            // Fallback for dev environment if RPC is missing (remove in production)
-            if ((error.message && (error.message.includes('function credit_deposit') && error.message.includes('does not exist'))) || 
-                error.code === 'PGRST202' ||
-                (error.message && error.message.includes('Could not find the function'))) {
-                 console.warn('RPC missing, falling back to non-atomic update (DEV ONLY)');
-                 return this._creditDepositFallback(userId, amount, txHash, description);
-            }
-            
-            // Handle missing tables gracefully
-             if (error.code === 'PGRST205' || (error.message && error.message.includes('relation'))) {
-                 console.warn('Ledger tables missing. Simulating deposit credit (In-Memory/Log Only).');
-                 console.log(`[SIMULATED] Credited ${amount} USDT to user ${userId} (Tx: ${txHash})`);
-                 return true;
-             }
-             
             throw error;
         }
     }
@@ -159,11 +136,6 @@ class LedgerService {
             return data;
         } catch (err) {
             console.error('Lock Payout Funds Error:', err);
-            // Fallback simulation for dev/test without RPC
-            if (err.message?.includes('function lock_payout_funds') || err.code === 'PGRST202') {
-                 console.warn('RPC lock_payout_funds missing, simulating success (DEV ONLY)');
-                 return { success: true };
-            }
             throw err;
         }
     }
@@ -180,9 +152,6 @@ class LedgerService {
             return data;
         } catch (err) {
             console.error('Finalize Payout Error:', err);
-             if (err.message?.includes('function finalize_payout') || err.code === 'PGRST202') {
-                 return { success: true };
-            }
             throw err;
         }
     }
@@ -199,9 +168,6 @@ class LedgerService {
             return data;
         } catch (err) {
             console.error('Fail Payout Error:', err);
-             if (err.message?.includes('function fail_payout') || err.code === 'PGRST202') {
-                 return { success: true };
-            }
             throw err;
         }
     }

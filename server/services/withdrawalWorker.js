@@ -2,7 +2,6 @@ const { createClient } = require('@supabase/supabase-js');
 const tronService = require('./tronService');
 const ledgerService = require('./ledgerService');
 const auditService = require('./auditService');
-const { usdtWithdrawalsStore } = require('../utils/mockStore');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,13 +30,8 @@ class WithdrawalWorker {
                 .not('tx_hash', 'is', null);
 
              if (error) {
-                 if (error.code === 'PGRST205' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-                     // Fallback to memory store
-                     processingWithdrawals = usdtWithdrawalsStore.filter(w => w.status === 'processing' && w.tx_hash);
-                 } else {
-                     console.error('[WithdrawalWorker] Error fetching processing:', error);
-                     return;
-                 }
+                 console.error('[WithdrawalWorker] Error fetching processing:', error);
+                 return;
              } else {
                  processingWithdrawals = dbProcessing;
              }
@@ -55,15 +49,9 @@ class WithdrawalWorker {
                      await ledgerService.finalizeWithdrawal(withdrawal.user_id, totalFinalized, withdrawal.id);
 
                      // Update DB
-                     if (usdtWithdrawalsStore.find(w => w.id === withdrawal.id)) {
-                         const w = usdtWithdrawalsStore.find(w => w.id === withdrawal.id);
-                         w.status = 'completed';
-                         w.updated_at = new Date().toISOString();
-                     } else {
-                         await supabase.from('usdt_withdrawals')
-                             .update({ status: 'completed', updated_at: new Date().toISOString() })
-                             .eq('id', withdrawal.id);
-                     }
+                     await supabase.from('usdt_withdrawals')
+                         .update({ status: 'completed', updated_at: new Date().toISOString() })
+                         .eq('id', withdrawal.id);
                      
                      await auditService.log('system', withdrawal.user_id, 'USDT_WITHDRAW_COMPLETED', withdrawal.id, { txHash: withdrawal.tx_hash }, '127.0.0.1');
 
@@ -75,20 +63,13 @@ class WithdrawalWorker {
                      await ledgerService.failWithdrawal(withdrawal.user_id, totalToRefund, withdrawal.id);
 
                      // Update DB
-                     if (usdtWithdrawalsStore.find(w => w.id === withdrawal.id)) {
-                         const w = usdtWithdrawalsStore.find(w => w.id === withdrawal.id);
-                         w.status = 'failed';
-                         w.failure_reason = 'On-chain transaction failed';
-                         w.updated_at = new Date().toISOString();
-                     } else {
-                         await supabase.from('usdt_withdrawals')
-                             .update({ 
-                                 status: 'failed', 
-                                 failure_reason: 'On-chain transaction failed',
-                                 updated_at: new Date().toISOString() 
-                             })
-                             .eq('id', withdrawal.id);
-                     }
+                     await supabase.from('usdt_withdrawals')
+                         .update({ 
+                             status: 'failed', 
+                             failure_reason: 'On-chain transaction failed',
+                             updated_at: new Date().toISOString() 
+                         })
+                         .eq('id', withdrawal.id);
 
                      await auditService.log('system', withdrawal.user_id, 'USDT_WITHDRAW_FAILED_ONCHAIN', withdrawal.id, { txHash: withdrawal.tx_hash }, '127.0.0.1');
                  }
@@ -114,14 +95,9 @@ class WithdrawalWorker {
                 .limit(5); // Process in batches
 
             if (error) {
-                if (error.code === 'PGRST205' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-                     // Fallback to memory store
-                     pendingWithdrawals = usdtWithdrawalsStore.filter(w => w.status === 'pending').slice(0, 5);
-                } else {
-                    console.error('[WithdrawalWorker] Error fetching pending:', error);
-                    this.isProcessing = false;
-                    return;
-                }
+                console.error('[WithdrawalWorker] Error fetching pending:', error);
+                this.isProcessing = false;
+                return;
             } else {
                 pendingWithdrawals = dbPending;
             }
@@ -168,23 +144,15 @@ class WithdrawalWorker {
 
             if (txHash) {
                 // 3. Update with TX Hash but keep as PROCESSING (wait for confirmation)
-                
-                if (usdtWithdrawalsStore.find(w => w.id === withdrawal.id)) {
-                     const w = usdtWithdrawalsStore.find(w => w.id === withdrawal.id);
-                     w.tx_hash = txHash;
-                     // Status remains 'processing'
-                     w.updated_at = new Date().toISOString();
-                } else {
-                    const { error: finalError } = await supabase
-                        .from('usdt_withdrawals')
-                        .update({ 
-                            tx_hash: txHash,
-                            updated_at: new Date().toISOString() 
-                        })
-                        .eq('id', withdrawal.id);
+                const { error: finalError } = await supabase
+                    .from('usdt_withdrawals')
+                    .update({ 
+                        tx_hash: txHash,
+                        updated_at: new Date().toISOString() 
+                    })
+                    .eq('id', withdrawal.id);
 
-                    if (finalError) throw finalError;
-                }
+                if (finalError) throw finalError;
 
                 await auditService.log('system', withdrawal.user_id, 'USDT_WITHDRAW_BROADCAST', withdrawal.id, { txHash }, '127.0.0.1');
                 console.log(`[WithdrawalWorker] Withdrawal ${withdrawal.id} BROADCAST. TX: ${txHash}. Waiting for confirmation.`);

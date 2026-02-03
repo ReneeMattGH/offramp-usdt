@@ -5,38 +5,17 @@ class RazorpayProvider {
     constructor() {
         this.key_id = process.env.RAZORPAY_KEY_ID;
         this.key_secret = process.env.RAZORPAY_KEY_SECRET;
-        this.account_number = process.env.BANK_ACCOUNT_NUMBER || 'ACC_123';
-        this.is_mock = process.env.ENABLE_REAL_PAYOUTS !== 'true';
+        this.account_number = process.env.BANK_ACCOUNT_NUMBER;
     }
 
     async initiatePayout(order, user) {
-        if (this.is_mock) {
-            console.log('[RazorpayProvider] MOCK Payout initiated');
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    const rand = Math.random();
-                    if (rand < 0.8) {
-                        resolve({ 
-                            status: 'SUCCESS', 
-                            payout_id: 'pout_' + Date.now(), 
-                            utr: 'UTR' + Date.now(),
-                            raw: { id: 'pout_' + Date.now(), status: 'processed' }
-                        });
-                    } else if (rand < 0.9) {
-                        resolve({ 
-                            status: 'FAILED', 
-                            reason: 'Invalid Bank Details (Mock)',
-                            raw: { error: { description: 'Invalid Bank Details' } }
-                        });
-                    } else {
-                        resolve({ 
-                            status: 'PROCESSING', 
-                            payout_id: 'pout_' + Date.now(),
-                            raw: { id: 'pout_' + Date.now(), status: 'processing' }
-                        });
-                    }
-                }, 1000);
-            });
+        if (!this.key_id || !this.key_secret || !this.account_number) {
+            console.error('[RazorpayProvider] Missing API Keys or Account Number');
+            return {
+                status: 'FAILED',
+                reason: 'Configuration Error: Missing API Keys',
+                raw: {}
+            };
         }
 
         try {

@@ -4,7 +4,7 @@ const path = require('path');
 const { Client } = require('pg');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../supabase/migrations');
+const MIGRATIONS_DIR = path.resolve(__dirname, '../db/migrations');
 
 async function runMigrations() {
     console.log('--- Database Migration Tool ---');

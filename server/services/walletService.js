@@ -38,13 +38,11 @@ class WalletService {
                     .maybeSingle();
                     
                 if (error) {
-                     if (error.code === 'PGRST205' || (error.message && error.message.includes('relation'))) {
-                         console.warn(`Wallet table missing. Skipping wallet init for ${type}.`);
-                         continue;
-                     }
+                     console.error(`Wallet Init Error for ${type}:`, error);
+                     throw error;
                 }
 
-                if (!data && !error) {
+                if (!data) {
                     console.log(`Creating ${type} wallet...`);
                     const account = await tronWeb.createAccount();
                     await supabase.from('wallets').insert({
@@ -56,7 +54,7 @@ class WalletService {
                 }
             }
         } catch (e) {
-            console.warn('Wallet Initialization Warning:', e.message);
+            console.error('Wallet Initialization Failed:', e.message);
         }
     }
 
@@ -92,30 +90,18 @@ class WalletService {
                 .single();
 
             if (error) {
-                 // Fallback if table missing: Return the address anyway so user sees something
-                 if (error.code === 'PGRST205' || (error.message && error.message.includes('relation'))) {
-                     console.warn('deposit_addresses table missing. Returning ephemeral address.');
-                     return {
-                         user_id: userId,
-                         tron_address: tronAddress,
-                         expires_at: expiresAt,
-                         is_used: false
-                     };
-                 }
+                 console.error('Deposit Address Create Error:', error);
                  throw error;
             }
-            return data;
-        } catch (error) {
-            console.error('Error generating deposit address:', error);
-            // Last ditch fallback
-            if (error.code === 'PGRST205' || (error.message && error.message.includes('relation'))) {
-                 return {
-                     user_id: userId,
-                     tron_address: 'T_EPHEMERAL_' + Date.now(), // Should be real address ideally but catch block might not have it scope
-                     expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-                 };
-            }
-            throw error;
+
+            return {
+                user_id: userId,
+                tron_address: tronAddress,
+                expires_at: expiresAt
+            };
+        } catch (e) {
+            console.error('generateDepositAddress failed:', e.message);
+            throw e;
         }
     }
 
@@ -127,16 +113,7 @@ class WalletService {
             .maybeSingle(); 
             
         if (error) {
-             if (error.code === 'PGRST205' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-                 console.warn(`Wallet table missing, returning fallback for ${type}`);
-                 // Fallback: Use System Wallet credentials for treasury/system if DB is broken
-                 if (type === 'treasury' || type === 'system') {
-                     return {
-                         address: tronWeb.defaultAddress.base58,
-                         privateKey: SYSTEM_PRIVATE_KEY
-                     };
-                 }
-             }
+             console.error(`Wallet table check failed for ${type}:`, error);
              throw error;
         }
         if (!data) return null;

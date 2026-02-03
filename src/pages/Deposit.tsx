@@ -1,12 +1,16 @@
 import { useAuth } from '@/lib/auth';
 import { useUserBalance } from '@/hooks/useUserBalance';
 import { useDepositAddress } from '@/hooks/useDepositAddress';
+import { useTronWallet } from '@/hooks/useTronWallet';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Link } from 'react-router-dom';
-import { Copy, ExternalLink, AlertCircle, RefreshCw, Clock, Shield } from 'lucide-react';
+import { Copy, ExternalLink, AlertCircle, RefreshCw, Clock, Shield, ArrowRight, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { WalletConnect } from '@/components/WalletConnect';
 import { toast } from 'sonner';
 import QRCode from 'react-qr-code';
+import { useState } from 'react';
 
 export default function Deposit() {
   const { user, isLoading: authLoading } = useAuth();
@@ -18,10 +22,38 @@ export default function Deposit() {
     isLoading: addressLoading,
     refresh: refreshAddress 
   } = useDepositAddress();
+  
+  const { connected, sendUSDT, loading: walletLoading } = useTronWallet();
+  const [amount, setAmount] = useState('');
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Wallet address copied to clipboard');
+  };
+
+  const handleDirectDeposit = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+        toast.error('Please enter a valid amount');
+        return;
+    }
+    if (!depositAddress) {
+        toast.error('Deposit address not ready');
+        return;
+    }
+
+    try {
+        setIsDepositing(true);
+        const hash = await sendUSDT(depositAddress, parseFloat(amount));
+        setTxHash(hash);
+        toast.success('Deposit initiated successfully!');
+        setAmount('');
+    } catch (e: any) {
+        toast.error(e.message || 'Deposit failed');
+    } finally {
+        setIsDepositing(false);
+    }
   };
 
   const isLoading = addressLoading;
@@ -142,7 +174,7 @@ export default function Deposit() {
                   </Button>
                 </div>
               </div>
-
+              
               <a
                 href={`https://nile.tronscan.org/#/address/${depositAddress}`}
                 target="_blank"
@@ -154,6 +186,59 @@ export default function Deposit() {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* Direct Wallet Deposit */}
+        <div className="stat-card mb-8 border-primary/20 bg-primary/5">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg">Deposit from Wallet</h3>
+                </div>
+                <WalletConnect />
+            </div>
+            
+            <p className="text-sm text-muted-foreground mb-4">
+                Connect your TronLink wallet to deposit USDT directly without copying addresses.
+            </p>
+
+            {connected ? (
+                <div className="space-y-4">
+                    <div className="flex gap-2">
+                        <Input
+                            type="number"
+                            placeholder="Amount (USDT)"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            disabled={isDepositing}
+                            className="bg-background"
+                        />
+                        <Button onClick={handleDirectDeposit} disabled={isDepositing || !amount}>
+                            {isDepositing ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                            Deposit
+                        </Button>
+                    </div>
+                    {txHash && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                            <p className="text-sm text-green-600 font-medium flex items-center gap-2">
+                                <Shield className="w-4 h-4" /> Deposit Sent!
+                            </p>
+                            <a 
+                                href={`https://nile.tronscan.org/#/transaction/${txHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-muted-foreground hover:underline flex items-center gap-1 mt-1"
+                            >
+                                View Transaction {txHash.slice(0, 8)}... <ExternalLink className="w-3 h-3" />
+                            </a>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="p-4 border border-dashed border-border rounded-lg text-center text-sm text-muted-foreground">
+                    Connect your wallet above to enable direct deposits.
+                </div>
+            )}
         </div>
 
         {/* Important Notice */}

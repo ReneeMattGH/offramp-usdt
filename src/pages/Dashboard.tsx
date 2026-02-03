@@ -262,12 +262,12 @@ export default function Dashboard() {
               </div>
               
               <a
-                href={`https://tronscan.org/#/address/${user?.tron_wallet_address}`}
+                href={`https://nile.tronscan.org/#/address/${user?.tron_wallet_address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm font-medium"
               >
-                View on TronScan
+                View on TronScan (Nile Testnet)
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>

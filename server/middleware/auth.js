@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { kycStatusStore } = require('../utils/mockStore');
+const kycService = require('../services/kycService');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -51,6 +52,21 @@ async function authMiddleware(req, res, next) {
 
         // 3. Attach User to Request
         req.user = user;
+
+        // ENRICHMENT: If kyc_status is missing (schema issue), fetch from kycService fallback
+        if (!req.user.kyc_status) {
+            try {
+                const kycData = await kycService.getKycStatus(user.id);
+                if (kycData && kycData.kyc_status) {
+                    req.user.kyc_status = kycData.kyc_status;
+                    req.user.kyc_verified_at = kycData.kyc_verified_at;
+                    req.user.kyc_rejection_reason = kycData.kyc_rejection_reason;
+                }
+            } catch (e) {
+                console.warn('Auth Middleware: Failed to fetch fallback KYC status', e.message);
+            }
+        }
+
         next();
 
     } catch (err) {

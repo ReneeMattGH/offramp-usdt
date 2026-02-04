@@ -26,19 +26,25 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize with a default user immediately (Bypass Auth)
+  const [user, setUser] = useState<User | null>({
+    id: 'mock-user-id',
+    account_holder_name: 'Guest User',
+    account_number: 'DEMO_USER_001',
+    ifsc_code: 'DEMO0001',
+    tron_wallet_address: null,
+    kyc_status: 'not_submitted' // Default, will update from backend
+  });
+  const [sessionToken, setSessionToken] = useState<string | null>('mock-session-token');
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Use Backend API instead of direct Supabase to get Mocked Data
-      const token = localStorage.getItem('session_token');
-      if (!token) return;
-
+      // Fetch latest user data (including KYC status) from backend
+      // Backend authMiddleware now ignores token and always returns the demo user
       const response = await fetch('/api/auth/me', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer mock-token` 
         }
       });
 
@@ -47,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const userData = await response.json();
+      // Update user state with fresh data from DB (e.g. KYC status)
       setUser(userData as unknown as User);
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -54,131 +61,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    const storedUserId = localStorage.getItem('user_id');
-    if (storedUserId) {
-      await fetchUserData(storedUserId);
-    }
+    await fetchUserData('mock-user-id');
   };
 
   const autoLogin = async () => {
-    try {
-      const response = await fetch('/api/auth/guest-login', {
-        method: 'POST'
-      });
-      const data = await response.json();
-      
-      if (data.user && data.token) {
-        localStorage.setItem('session_token', data.token);
-        localStorage.setItem('user_id', data.user.id);
-        setUser(data.user as unknown as User);
-        setSessionToken(data.token);
-      }
-    } catch (err) {
-      console.error('Auto login failed:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    // No-op: We are always logged in
+    await refreshUser();
   };
 
   useEffect(() => {
-    // Check for existing session on load
-    const storedToken = localStorage.getItem('session_token');
-    const storedUserId = localStorage.getItem('user_id');
+    // On mount, sync with backend to get real KYC status
+    refreshUser();
     
-    if (storedToken && storedUserId) {
-      validateSession(storedToken, storedUserId);
-    } else {
-      autoLogin();
-    }
-    
-    // Subscribe to realtime changes for the user
-    if (storedUserId) {
-      const channel = supabase
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'users',
-            filter: `id=eq.${storedUserId}`,
-          },
-          (payload) => {
-            console.log('User update received:', payload);
-            setUser(payload.new as unknown as User);
-          }
-        )
-        .subscribe();
-        
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    // Subscribe to realtime changes for the user (if we have a real ID from backend)
+    // For now, we'll skip complex realtime subscriptions unless we confirm the ID
   }, []);
 
-  const validateSession = async (token: string, userId: string) => {
-    try {
-      // Use Backend API to validate session (Decoupled from direct DB access)
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData as unknown as User);
-        setSessionToken(token);
-      } else {
-        // Token invalid or expired
-        console.warn('Session validation failed with status:', response.status);
-        localStorage.removeItem('session_token');
-        localStorage.removeItem('user_id');
-        // Try auto-login again if session is invalid
-        await autoLogin();
-      }
-    } catch (err) {
-      console.error('Session validation error:', err);
-      // Network error or other issue
-      // Do NOT clear token immediately on network error, wait for retry or user action
-      // But for now, fallback to auto-login might help if it was a glitch
-      
-      // If network error, maybe wait and retry? 
-      // For this specific "Authentication Failed" loop, let's try autoLogin
-      // with a slight delay or just proceed.
-      
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('user_id');
-      await autoLogin();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const sendOtp = async (accountNumber: string): Promise<{ error: string | null }> => {
-    try {
-      // Fixed OTP for demo purposes
-      const otpCode = '123456';
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
-
-      // Store OTP in database
-      const { error } = await supabase
-        .from('otps')
-        .insert({
-          account_number: accountNumber,
-          otp_code: otpCode,
-          expires_at: expiresAt,
-        });
-
-      if (error) throw error;
-
-      // In dev, log the OTP for testing (remove in production)
-      console.log('OTP for testing:', otpCode);
-      
-      return { error: null };
-    } catch (err: any) {
-      return { error: err.message || 'Failed to send OTP' };
-    }
+  const login = async (accountNumber: string, otp: string): Promise<{ error: string | null }> => {
+    return { error: null };
   };
 
   const signup = async (
@@ -187,161 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ifscCode: string,
     otp: string
   ): Promise<{ error: string | null }> => {
-    try {
-      // Verify OTP
-      const { data: otpData, error: otpError } = await supabase
-        .from('otps')
-        .select('*')
-        .eq('account_number', accountNumber)
-        .eq('otp_code', otp)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (otpError || !otpData) {
-        return { error: 'Invalid or expired OTP' };
-      }
-
-      // Mark OTP as used
-      await supabase
-        .from('otps')
-        .update({ used: true })
-        .eq('id', otpData.id);
-
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('account_number', accountNumber)
-        .single();
-
-      if (existingUser) {
-        return { error: 'Account already exists. Please login instead.' };
-      }
-
-      // Generate TRON wallet address (mock - in production use TronWeb)
-      const walletAddress = 'T' + Array.from({ length: 33 }, () => 
-        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789'[Math.floor(Math.random() * 58)]
-      ).join('');
-
-      // Create user
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert({
-          account_holder_name: accountHolderName,
-          account_number: accountNumber,
-          ifsc_code: ifscCode,
-          tron_wallet_address: walletAddress,
-          encrypted_private_key: 'encrypted_key_placeholder', // In production, properly encrypt
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      // Create session
-      const token = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
-
-      await supabase
-        .from('sessions')
-        .insert({
-          user_id: newUser.id,
-          token,
-          expires_at: expiresAt,
-        });
-
-      // Store in localStorage
-      localStorage.setItem('session_token', token);
-      localStorage.setItem('user_id', newUser.id);
-
-      setUser(newUser as unknown as User);
-      setSessionToken(token);
-
-      return { error: null };
-    } catch (err: any) {
-      return { error: err.message || 'Signup failed' };
-    }
+    return { error: null };
   };
 
-  const login = async (accountNumber: string, otp: string): Promise<{ error: string | null }> => {
-    try {
-      // Verify OTP
-      const { data: otpData, error: otpError } = await supabase
-        .from('otps')
-        .select('*')
-        .eq('account_number', accountNumber)
-        .eq('otp_code', otp)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (otpError || !otpData) {
-        return { error: 'Invalid or expired OTP' };
-      }
-
-      // Mark OTP as used
-      await supabase
-        .from('otps')
-        .update({ used: true })
-        .eq('id', otpData.id);
-
-      // Find user
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('account_number', accountNumber)
-        .single();
-
-      if (userError || !userData) {
-        return { error: 'Account not found. Please signup first.' };
-      }
-
-      // Create session
-      const token = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-      await supabase
-        .from('sessions')
-        .insert({
-          user_id: userData.id,
-          token,
-          expires_at: expiresAt,
-        });
-
-      // Store in localStorage
-      localStorage.setItem('session_token', token);
-      localStorage.setItem('user_id', userData.id);
-
-      setUser(userData as unknown as User);
-      setSessionToken(token);
-
-      return { error: null };
-    } catch (err: any) {
-      return { error: err.message || 'Login failed' };
-    }
+  const sendOtp = async (accountNumber: string): Promise<{ error: string | null }> => {
+    return { error: null };
   };
 
   const logout = async () => {
-    try {
-      if (sessionToken) {
-        await supabase
-          .from('sessions')
-          .delete()
-          .eq('token', sessionToken);
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('user_id');
-      setUser(null);
-      setSessionToken(null);
-    }
+    // No-op or maybe reset to default? 
+    // User asked to "remove authentication", so "logout" implies nothing.
+    console.log('Logout ignored - Auth disabled');
   };
 
   return (

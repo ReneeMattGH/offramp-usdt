@@ -34,56 +34,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
-            <h1 className="text-2xl font-bold text-destructive">Authentication Failed</h1>
-            <p className="text-muted-foreground">Could not log in automatically to the demo account.</p>
-            <div className="flex gap-4">
-                <button 
-                    onClick={() => window.location.reload()} 
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-                >
-                    Retry
-                </button>
-                <button 
-                    onClick={() => {
-                        localStorage.clear();
-                        window.location.reload();
-                    }} 
-                    className="px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded transition-colors"
-                >
-                    Reset & Retry
-                </button>
-            </div>
-        </div>
-    );
-  }
-
+  // Authentication Bypass: Always render children
   return <>{children}</>;
 }
 
 // Public Route wrapper (redirect if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex items-center gap-2">
-          <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
+  // Always redirect to dashboard since auth is bypassed
+  return <Navigate to="/dashboard" replace />;
 }
 
 function AppRoutes() {

@@ -44,16 +44,8 @@ export function useUserBalance(): UserBalance {
         setBalance((accountData as any)?.available_balance || 0);
         setLockedBalance((accountData as any)?.locked_balance || 0);
       } else {
-        // Fallback: Ledger not initialized (Demo Mode) or Table missing
-        if (accountError) {
-             console.warn('Ledger table missing or error, using fallback:', accountError.message);
-        }
-        
-        // Check local storage for demo balance state
-        const spentDummy = parseFloat(localStorage.getItem('dummy_spent') || '0');
-        const dummyBalance = Math.max(0, 1000 - spentDummy);
-        setBalance(dummyBalance);
-        setLockedBalance(0); // No locked balance in demo mode fallback
+        setBalance(0);
+        setLockedBalance(0);
       }
 
       // Get pending salary transactions

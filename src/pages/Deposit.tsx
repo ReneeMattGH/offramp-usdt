@@ -1,5 +1,4 @@
 import { useAuth } from '@/lib/auth';
-import { useUserBalance } from '@/hooks/useUserBalance';
 import { useDepositAddress } from '@/hooks/useDepositAddress';
 import { useTronWallet } from '@/hooks/useTronWallet';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -14,7 +13,6 @@ import { useState } from 'react';
 
 export default function Deposit() {
   const { user, isLoading: authLoading } = useAuth();
-  const { balance, isLoading: balanceLoading, refetch } = useUserBalance();
   const { 
     address: depositAddress, 
     timeRemaining, 
@@ -96,27 +94,7 @@ export default function Deposit() {
           </p>
         </div>
 
-        {/* Balance Card */}
-        <div className="stat-card mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold">
-                  {balanceLoading ? '...' : balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
-                <span className="text-muted-foreground">USDT</span>
-              </div>
-              <p className="text-xs text-green-600 mt-1 animate-pulse">
-                 Live updates active
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={refetch} disabled={balanceLoading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${balanceLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
+        {/* Balance from Tron Wallet is shown in the connect badge above */}
 
         {/* Address Expiry Timer */}
         <div className="bg-muted rounded-lg p-4 mb-6 flex items-center justify-between">

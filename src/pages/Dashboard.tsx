@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/auth';
-import { useUserBalance } from '@/hooks/useUserBalance';
+import { useTronWallet } from '@/hooks/useTronWallet';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { 
@@ -21,11 +21,11 @@ interface RecentActivity {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { balance, pendingSalary, isLoading: balanceLoading, refetch } = useUserBalance();
+  const { connected, balance: walletBalance, refresh } = useTronWallet();
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
-  const displayBalance = balance;
+  const displayBalance = connected ? walletBalance.usdt : 0;
 
   useEffect(() => {
     const fetchRecentActivity = async () => {
@@ -44,13 +44,7 @@ export default function Dashboard() {
           type: item.type as 'deposit' | 'salary' | 'withdrawal',
         }));
 
-        // Demo: Merge dummy transactions
-        const dummyTxs = JSON.parse(localStorage.getItem('dummy_transactions') || '[]');
-        const allActivity = [...dummyTxs, ...dbActivity]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 5);
-          
-        setRecentActivity(allActivity);
+        setRecentActivity(dbActivity);
       }
       setActivityLoading(false);
     };
@@ -114,15 +108,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Balance Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Main Balance Card */}
-          {balanceLoading ? (
-            <div className="lg:col-span-2">
-              <CardSkeleton />
-            </div>
-          ) : (
-            <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border bg-card p-8">
+          <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border bg-card p-8">
               <div className="absolute top-0 right-0 w-40 h-40 bg-muted/30 rounded-full -translate-y-1/2 translate-x-1/2" />
               
               <div className="relative">
@@ -133,14 +120,14 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Available Balance</p>
-                      <p className="text-xs text-muted-foreground">Real-time from ledger</p>
+                      <p className="text-xs text-muted-foreground">Real-time from TronLink wallet</p>
                     </div>
                   </div>
                   <Button 
                     variant="outline" 
                     size="icon" 
                     className="rounded-full"
-                    onClick={refetch}
+                    onClick={refresh}
                   >
                     <RefreshCw className="w-4 h-4" />
                   </Button>
@@ -155,25 +142,12 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {pendingSalary > 0 && (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <Clock className="w-5 h-5 text-amber-600" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Pending Salary</p>
-                      <p className="text-lg font-semibold text-amber-600">
-                        +{pendingSalary.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex items-center gap-2 mt-6">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Connected to TRON Mainnet</span>
+                  <span className="text-xs text-muted-foreground">{connected ? 'Connected to TRON Wallet' : 'Wallet not connected'}</span>
                 </div>
               </div>
             </div>
-          )}
 
           {/* Quick Stats */}
           <div className="space-y-4">

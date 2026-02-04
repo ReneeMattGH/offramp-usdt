@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
-// Nile Testnet USDT Contract
-const NILE_USDT_CONTRACT = 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj';
-
 interface TronWeb {
   ready: boolean;
   defaultAddress: {
@@ -32,34 +29,51 @@ export function useTronWallet() {
   const [balance, setBalance] = useState<{ trx: number; usdt: number }>({ trx: 0, usdt: 0 });
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [network, setNetwork] = useState<'mainnet' | 'nile' | 'unknown'>('unknown');
 
-  const checkConnection = useCallback(async () => {
-    if (window.tronWeb && window.tronWeb.ready && window.tronWeb.defaultAddress.base58) {
-      setAddress(window.tronWeb.defaultAddress.base58);
-      setConnected(true);
-      await fetchBalances(window.tronWeb.defaultAddress.base58);
-    } else {
-      setConnected(false);
-      setAddress(null);
-    }
+  const getUsdtContract = useCallback(() => {
+    const host = (window as any)?.tronWeb?.fullNode?.host || '';
+    const isNile = /nile/i.test(host) || /nileex/i.test(host);
+    setNetwork(isNile ? 'nile' : host ? 'mainnet' : 'unknown');
+    return isNile ? 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj' : 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-        checkConnection();
+        if (window.tronWeb && window.tronWeb.ready && window.tronWeb.defaultAddress.base58) {
+          const addr = window.tronWeb.defaultAddress.base58;
+          setAddress(addr);
+          setConnected(true);
+          fetchBalances(addr);
+        } else {
+          setConnected(false);
+          setAddress(null);
+        }
     }, 2000); // Poll for account changes
 
     // Listen for messages from TronLink
     window.addEventListener('message', (e) => {
         if (e.data.message && e.data.message.action === 'accountsChanged') {
-            checkConnection();
+            const addr = window.tronWeb?.defaultAddress?.base58;
+            if (addr) {
+              setAddress(addr);
+              setConnected(true);
+              fetchBalances(addr);
+            } else {
+              setConnected(false);
+              setAddress(null);
+            }
+        }
+        if (e.data.message && e.data.message.action === 'setNode') {
+            const addr = window.tronWeb?.defaultAddress?.base58;
+            if (addr) fetchBalances(addr);
         }
     });
 
     return () => clearInterval(interval);
-  }, [checkConnection]);
+  }, []);
 
-  const fetchBalances = async (addr: string) => {
+  const fetchBalances = useCallback(async (addr: string) => {
     try {
       // TRX Balance
       const trxBal = await window.tronWeb.trx.getBalance(addr);
@@ -67,7 +81,8 @@ export function useTronWallet() {
       // USDT Balance (TRC20)
       let usdtBal = 0;
       try {
-        const contract = await window.tronWeb.contract().at(NILE_USDT_CONTRACT);
+        const contractAddr = getUsdtContract();
+        const contract = await window.tronWeb.contract().at(contractAddr);
         const balanceObj = await contract.balanceOf(addr).call();
         // Handle BigNumber result if returned, usually it's in sun/wei
         usdtBal = parseInt(balanceObj.toString()) / 1000000;
@@ -82,7 +97,7 @@ export function useTronWallet() {
     } catch (e) {
       console.error('Error fetching balances:', e);
     }
-  };
+  }, [getUsdtContract]);
 
   const connect = async () => {
     setLoading(true);
@@ -90,8 +105,14 @@ export function useTronWallet() {
       if (window.tronLink) {
         const res = await window.tronLink.request({ method: 'tron_requestAccounts' });
         if (res.code === 200) {
-            // Wait a moment for tronWeb to inject the new address
-            setTimeout(() => checkConnection(), 500);
+            setTimeout(() => {
+              const addr = window.tronWeb?.defaultAddress?.base58;
+              if (addr) {
+                setAddress(addr);
+                setConnected(true);
+                fetchBalances(addr);
+              }
+            }, 500);
         } else {
             toast.error('Connection rejected');
         }
@@ -111,7 +132,8 @@ export function useTronWallet() {
     if (!connected) throw new Error('Wallet not connected');
     
     try {
-        const contract = await window.tronWeb.contract().at(NILE_USDT_CONTRACT);
+        const contractAddr = getUsdtContract();
+        const contract = await window.tronWeb.contract().at(contractAddr);
         const amountInUnits = Math.floor(amount * 1000000);
         
         const txId = await contract.transfer(toAddress, amountInUnits).send({
@@ -132,6 +154,7 @@ export function useTronWallet() {
     loading,
     connect,
     sendUSDT,
-    refresh: () => address && fetchBalances(address)
+    refresh: () => address && fetchBalances(address),
+    network
   };
 }

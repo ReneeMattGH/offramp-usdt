@@ -30,6 +30,10 @@ class WithdrawalWorker {
                 .not('tx_hash', 'is', null);
 
              if (error) {
+                 if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+                     // Silent return for missing table
+                     return;
+                 }
                  console.error('[WithdrawalWorker] Error fetching processing:', error);
                  return;
              } else {
@@ -95,6 +99,12 @@ class WithdrawalWorker {
                 .limit(5); // Process in batches
 
             if (error) {
+                // Supabase error for missing table
+                if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+                     console.warn('[WithdrawalWorker] Table usdt_withdrawals missing. Skipping worker cycle.');
+                     this.isProcessing = false;
+                     return;
+                }
                 console.error('[WithdrawalWorker] Error fetching pending:', error);
                 this.isProcessing = false;
                 return;

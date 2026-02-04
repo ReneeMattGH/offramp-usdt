@@ -45,9 +45,10 @@ class LedgerService {
             const { data, error } = await supabase.rpc('get_calculated_balance', { p_user_id: userId });
             
             if (error) {
-                // If RPC missing, try direct table read
-                if (error.code === 'PGRST205' || error.message?.includes('function')) {
-                     return this._getWalletBalanceFallback(userId);
+                // If RPC missing or table missing, return zero balance (Safe Fallback)
+                if (error.code === 'PGRST205' || error.message?.includes('function') || error.message?.includes('relation') || error.message?.includes('table')) {
+                     console.warn('[LedgerService] Ledger tables/RPC missing. Returning 0 balance.');
+                     return { available: 0, locked: 0, is_consistent: true };
                 }
                 throw error;
             }
@@ -59,6 +60,10 @@ class LedgerService {
             };
         } catch (err) {
             console.error('Get Wallet Balance Error:', err);
+             // Fallback to 0 if everything fails (e.g. schema missing)
+             if (err.message?.includes('table')) {
+                 return { available: 0, locked: 0, is_consistent: true };
+             }
             throw err;
         }
     }

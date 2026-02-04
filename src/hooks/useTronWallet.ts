@@ -143,6 +143,9 @@ export function useTronWallet() {
         return txId;
     } catch (e: any) {
         console.error('Send USDT Error:', e);
+        if (typeof e === 'string') {
+             throw new Error(e);
+        }
         throw new Error(e.message || 'Transaction failed');
     }
   };

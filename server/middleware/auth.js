@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { kycStatusStore } = require('../utils/mockStore');
+const { kycStatusStore, sessionStore } = require('../utils/mockStore');
 const kycService = require('../services/kycService');
 require('dotenv').config();
 
@@ -29,10 +29,25 @@ async function authMiddleware(req, res, next) {
                 .gt('expires_at', new Date().toISOString())
                 .single();
             
-            if (sessionError) throw sessionError;
-            session = data;
+            if (sessionError || !data) {
+                // Check Mock Store
+                const mockSession = sessionStore[token];
+                if (mockSession && new Date(mockSession.expires_at) > new Date()) {
+                    session = { user_id: mockSession.user_id };
+                } else {
+                    throw new Error('Session not found in DB or Mock Store');
+                }
+            } else {
+                session = data;
+            }
         } catch (e) {
-            return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+            // Double check mock store in case of exception
+            const mockSession = sessionStore[token];
+            if (mockSession && new Date(mockSession.expires_at) > new Date()) {
+                session = { user_id: mockSession.user_id };
+            } else {
+                 return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+            }
         }
 
         if (!session) {
@@ -40,14 +55,28 @@ async function authMiddleware(req, res, next) {
         }
 
         // 2. Fetch User with KYC Status
-        const { data: user, error: userError } = await supabase
+        let user = null;
+        const { data: dbUser, error: userError } = await supabase
             .from('users')
             .select('*') // Fetch all fields for context
             .eq('id', session.user_id)
             .single();
 
-        if (userError || !user) {
-            return res.status(401).json({ error: 'Unauthorized: User not found' });
+        if (userError || !dbUser) {
+             // Check if it's a mock user
+             if (session.user_id === 'mock-user-id') {
+                 user = {
+                     id: 'mock-user-id',
+                     account_number: 'DEMO_USER_001',
+                     account_holder_name: 'Demo User',
+                     kyc_status: 'approved',
+                     email: 'demo@example.com'
+                 };
+             } else {
+                 return res.status(401).json({ error: 'Unauthorized: User not found' });
+             }
+        } else {
+            user = dbUser;
         }
 
         // 3. Attach User to Request

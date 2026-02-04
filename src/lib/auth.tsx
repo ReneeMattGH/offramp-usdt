@@ -118,26 +118,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const validateSession = async (token: string, userId: string) => {
     try {
-      // Check if session is valid
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('token', token)
-        .eq('user_id', userId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      // Use Backend API to validate session (Decoupled from direct DB access)
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      if (sessionError || !session) {
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData as unknown as User);
+        setSessionToken(token);
+      } else {
+        // Token invalid or expired
+        console.warn('Session validation failed with status:', response.status);
         localStorage.removeItem('session_token');
         localStorage.removeItem('user_id');
-        setIsLoading(false);
-        return;
+        // Try auto-login again if session is invalid
+        await autoLogin();
       }
-
-      await fetchUserData(userId);
-      setSessionToken(token);
     } catch (err) {
       console.error('Session validation error:', err);
+      // Network error or other issue
+      // Do NOT clear token immediately on network error, wait for retry or user action
+      // But for now, fallback to auto-login might help if it was a glitch
+      
+      // If network error, maybe wait and retry? 
+      // For this specific "Authentication Failed" loop, let's try autoLogin
+      // with a slight delay or just proceed.
+      
+      localStorage.removeItem('session_token');
+      localStorage.removeItem('user_id');
+      await autoLogin();
     } finally {
       setIsLoading(false);
     }

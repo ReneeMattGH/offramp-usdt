@@ -30,7 +30,8 @@ export function KYCVerificationModal({
   const { user, sessionToken } = useAuth();
   // Simplified Flow: aadhaar -> success
   const [step, setStep] = useState<'aadhaar' | 'success'>('aadhaar');
-  const [aadhaarNumber, setAadhaarNumber] = useState('123456789012');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarImage, setAadhaarImage] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleKYCSubmit = async (e: React.FormEvent) => {
@@ -39,20 +40,25 @@ export function KYCVerificationModal({
       toast.error('Please enter a valid 12-digit Aadhaar number');
       return;
     }
+    if (!aadhaarImage) {
+      toast.error('Please upload your Aadhaar card photo');
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
+      const formData = new FormData();
+      formData.append('aadhaar_number', aadhaarNumber);
+      formData.append('aadhaar_image', aadhaarImage);
+
       // Call backend to process KYC
       const response = await fetch('/api/verify-kyc', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`
         },
-        body: JSON.stringify({
-          aadhaar_number: aadhaarNumber,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -62,7 +68,7 @@ export function KYCVerificationModal({
       }
 
       setStep('success');
-      toast.success('KYC Verified Successfully');
+      toast.success('KYC Submitted for Review');
       
       setTimeout(() => {
         onSuccess();
@@ -78,7 +84,8 @@ export function KYCVerificationModal({
 
   const handleClose = () => {
     setStep('aadhaar');
-    setAadhaarNumber('123456789012'); // Reset to valid demo number
+    setAadhaarNumber('');
+    setAadhaarImage(null);
     onClose();
   };
 
@@ -88,50 +95,45 @@ export function KYCVerificationModal({
         <DialogHeader>
           <DialogTitle>Identity Verification</DialogTitle>
           <DialogDescription>
-            Verify your identity to enable withdrawals. This is a one-time process.
-            <br />
-            <span className="text-xs text-muted-foreground mt-2 block font-mono bg-muted p-2 rounded">
-              Demo Numbers: 123456789012, 999988887777
-            </span>
+            Verify your identity to enable withdrawals. Please upload your Aadhaar card.
           </DialogDescription>
         </DialogHeader>
 
         {step === 'aadhaar' ? (
           <form onSubmit={handleKYCSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="aadhaar">Aadhaar Number</Label>
-              <Input
-                id="aadhaar"
-                placeholder="Enter 12-digit Aadhaar number"
-                value={aadhaarNumber}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  setAadhaarNumber(val);
-                }}
-                maxLength={12}
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-muted-foreground">
-                For demo: Use 123456789012 or 999988887777
-              </p>
+                <Label htmlFor="aadhaar">Aadhaar Number</Label>
+                <Input
+                  id="aadhaar"
+                  placeholder="Enter 12-digit Aadhaar Number"
+                  value={aadhaarNumber}
+                  onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  required
+                />
             </div>
-            
+            <div className="space-y-2">
+                <Label htmlFor="picture">Aadhaar Card Photo</Label>
+                <Input 
+                  id="picture" 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => setAadhaarImage(e.target.files?.[0] || null)} 
+                  required 
+                />
+            </div>
             <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Verify Identity
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit for Verification
               </Button>
             </DialogFooter>
           </form>
         ) : (
           <div className="py-6 text-center">
             <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
-            <h3 className="text-lg font-medium mb-2">Verification Successful!</h3>
+            <h3 className="text-lg font-medium mb-2">Submitted Successfully!</h3>
             <p className="text-sm text-muted-foreground">
-              Your identity has been verified. You can now process withdrawals.
+              Your documents have been submitted for review. Please wait for admin approval.
             </p>
           </div>
         )}

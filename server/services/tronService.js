@@ -235,35 +235,23 @@ class TronService {
             return;
         }
 
-        // 5. Valid Deposit - Credit User
-        try {
-            const success = await ledgerService.creditDeposit(addrData.user_id, amount, txHash, `Deposit ${amount} USDT`);
-            
-            if (success) {
-                // Mark blockchain tx as credited
-                await supabase
-                    .from('blockchain_transactions')
-                    .update({ status: 'credited', processed_at: new Date().toISOString() })
-                    .eq('tx_hash', txHash);
+        // 5. Valid Deposit - Pending Admin Approval
+        // We do NOT credit automatically anymore. We leave it as 'detected' (or 'pending_approval').
+        // Admin must manually approve.
+        
+        console.log(`Deposit detected: ${amount} USDT (Tx: ${txHash}). Waiting for Admin Approval.`);
+        
+        // Optionally update status to 'pending_approval' if 'detected' is too generic
+        await supabase
+            .from('blockchain_transactions')
+            .update({ status: 'pending_approval' })
+            .eq('tx_hash', txHash);
 
-                // Mark address as used
-                await supabase
-                    .from('deposit_addresses')
-                    .update({ is_used: true })
-                    .eq('id', addrData.id);
+        /* 
+           Auto-credit logic disabled for manual approval flow.
+           Admin API will handle creditDeposit and sweep trigger.
+        */
 
-                console.log(`Credited ${amount} USDT to user ${addrData.user_id}`);
-
-                // 6. Trigger Sweep
-                await this.triggerSweep(addrData, amount);
-
-            } else {
-                console.error(`Failed to credit deposit for ${txHash}`);
-                // Status remains 'detected' for manual review
-            }
-        } catch (ledgerError) {
-            console.error('Ledger Credit Error:', ledgerError);
-        }
     }
 
     async triggerSweep(addrData, amount) {

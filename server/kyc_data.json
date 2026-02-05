@@ -9,9 +9,10 @@
   },
   "0b1ff4dc-91c6-4d54-98f6-84e191d8e051": {
     "status": "approved",
-    "updated_at": "2026-02-03T19:20:42.492Z",
-    "verified_at": "2026-02-03T19:20:42.209Z",
+    "updated_at": "2026-02-05T16:14:51.721Z",
+    "verified_at": "2026-02-05T16:14:50.877Z",
     "rejection_reason": null,
-    "aadhaar_number": "123456789012"
+    "aadhaar_number": "123456123456",
+    "aadhaar_photo_url": null
   }
 }

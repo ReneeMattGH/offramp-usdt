@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhaar_photo_url TEXT;
+ALTER TABLE kyc_records ADD COLUMN IF NOT EXISTS document_url TEXT;

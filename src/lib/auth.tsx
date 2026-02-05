@@ -95,9 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    // No-op or maybe reset to default? 
-    // User asked to "remove authentication", so "logout" implies nothing.
-    console.log('Logout ignored - Auth disabled');
+    // In this Demo/Guest mode, "logout" means resetting the session to a fresh state.
+    // We will reset the KYC status on the backend so the user can try again.
+    try {
+      await fetch('/api/debug/reset-kyc', { method: 'POST' });
+      // Force reload to re-fetch the fresh user state (which will be 'not_submitted')
+      window.location.reload();
+    } catch (e) {
+      console.error('Logout reset failed:', e);
+      window.location.reload();
+    }
   };
 
   return (

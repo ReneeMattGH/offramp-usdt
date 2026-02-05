@@ -70,6 +70,27 @@ const AdminDeposits = () => {
     }
   };
 
+  const handleApprove = async (txHash: string) => {
+    try {
+        const token = localStorage.getItem('adminToken');
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/admin/deposits/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ txHash })
+        });
+        
+        const result = await res.json();
+        if (res.ok) {
+            toast({ title: "Approved", description: "Deposit credited successfully." });
+            fetchDeposits();
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   if (loading) return <Loader2 className="animate-spin h-8 w-8 m-auto" />;
 
   return (
@@ -79,7 +100,7 @@ const AdminDeposits = () => {
         <Button onClick={() => setCreditDialog({ open: true, txHash: "" })}>Manual Credit</Button>
       </div>
       
-      <div className="border rounded-lg bg-white">
+      <div className="border rounded-lg bg-white overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -95,17 +116,23 @@ const AdminDeposits = () => {
             {data.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">
-                    {item.reference_id?.substring(0, 10)}...
-                    <a href={`https://nile.tronscan.org/#/transaction/${item.reference_id}`} target="_blank" className="ml-2 inline-block">
+                    {item.tx_hash?.substring(0, 10)}...
+                    <a href={`https://nile.tronscan.org/#/transaction/${item.tx_hash}`} target="_blank" className="ml-2 inline-block">
                         <ExternalLink className="h-3 w-3" />
                     </a>
                 </TableCell>
                 <TableCell>{item.users?.email || item.user_id}</TableCell>
                 <TableCell className="text-green-600 font-bold">+{item.amount}</TableCell>
                 <TableCell>{new Date(item.created_at).toLocaleString()}</TableCell>
-                <TableCell><Badge>Confirmed</Badge></TableCell>
                 <TableCell>
-                    {/* Placeholder for Refund/Revert actions if needed */}
+                    <Badge variant={item.status === 'credited' ? 'default' : 'secondary'}>
+                        {item.status}
+                    </Badge>
+                </TableCell>
+                <TableCell>
+                    {(item.status === 'detected' || item.status === 'pending_approval') && (
+                        <Button size="sm" onClick={() => handleApprove(item.tx_hash)}>Approve</Button>
+                    )}
                 </TableCell>
               </TableRow>
             ))}

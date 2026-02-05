@@ -63,11 +63,12 @@ class PayoutService {
         this.isProcessing = true;
 
         try {
-            // Fetch PENDING orders
+            // Fetch APPROVED orders (Waiting for payout)
+            // Note: Orders start as PENDING (Waiting for Admin Approval) -> APPROVED (Waiting for Payout)
             const { data: order, error } = await supabase
                 .from('payout_orders')
                 .select('*, users(*), bank_accounts(*)') // Fetch user and bank details
-                .eq('status', 'PENDING')
+                .eq('status', 'APPROVED')
                 .order('created_at', { ascending: true })
                 .limit(1)
                 .maybeSingle();

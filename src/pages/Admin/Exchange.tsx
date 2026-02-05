@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 const AdminExchange = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionDialog, setActionDialog] = useState<{ open: boolean, id: string | null, action: 'success' | 'failed' | null }>({ open: false, id: null, action: null });
+  const [actionDialog, setActionDialog] = useState<{ open: boolean, id: string | null, action: 'approved' | 'success' | 'failed' | null }>({ open: false, id: null, action: null });
   const [note, setNote] = useState("");
   const { toast } = useToast();
 
@@ -74,7 +74,7 @@ const AdminExchange = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Exchange & Payouts</h2>
-      <div className="border rounded-lg bg-white">
+      <div className="border rounded-lg bg-white overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -102,6 +102,11 @@ const AdminExchange = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="space-x-2">
+                  {item.status === 'PENDING' && (
+                    <Button size="sm" onClick={() => setActionDialog({ open: true, id: item.id, action: 'approved' })}>
+                        Approve
+                    </Button>
+                  )}
                   {item.status === 'processing' && (
                     <>
                       <Button size="sm" variant="outline" className="text-green-600" onClick={() => setActionDialog({ open: true, id: item.id, action: 'success' })}>
@@ -111,6 +116,9 @@ const AdminExchange = () => {
                         <XCircle className="h-4 w-4 mr-1" /> Mark Failed
                       </Button>
                     </>
+                  )}
+                  {item.status === 'APPROVED' && (
+                     <div className="text-xs text-gray-500 italic">Waiting for Payout Worker...</div>
                   )}
                 </TableCell>
               </TableRow>

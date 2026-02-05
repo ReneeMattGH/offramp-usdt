@@ -64,7 +64,7 @@ class KycService {
         this.mode = process.env.KYC_MODE || 'MANUAL'; // Default to Manual Review
     }
 
-    async submitKyc(userId, data, ipAddress) {
+    async submitKyc(userId, data, ipAddress, file) {
         let { aadhaar_number, full_name, dob } = data;
 
         // SANITIZATION: Remove any non-digits (spaces, dashes, etc.)
@@ -80,23 +80,41 @@ class KycService {
         let status = 'pending';
         let verifiedAt = null;
         let rejectionReason = null;
-        let providerResponse = {};
+        let providerResponse = { message: 'Submitted for Manual Review' };
+        let documentUrl = null;
 
-        // 2. Verification Logic
-        // In a real system, we would call an external API here (e.g. Zoop, Karza)
-        
-        // DEMO MODE: Auto-approve specific numbers
-        const DEMO_NUMBERS = ['123456789012', '999988887777'];
-        
-        if (DEMO_NUMBERS.includes(aadhaar_number)) {
+        // DEMO BYPASS: Check for specific test number
+        if (aadhaar_number === '123456123456') {
             status = 'approved';
             verifiedAt = new Date().toISOString();
-            console.log(`[KYC] Demo Number ${aadhaar_number} Auto-Approved`);
-            providerResponse = { message: 'Demo Auto-Approval', demo: true };
-        } else {
-            // For now, we store it as 'pending' for Manual Review or Webhook update.
-            console.log(`[KYC] KYC Submitted for ${aadhaar_number}. Status: PENDING (Waiting for Review/Provider)`);
-            providerResponse = { message: 'Submitted for Verification' };
+            providerResponse = { message: 'Demo Verification Successful', code: 'DEMO_BYPASS' };
+        }
+
+        // 2. File Upload (Supabase Storage)
+        if (file) {
+            try {
+                const fileName = `${userId}_${Date.now()}_aadhaar.jpg`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('kyc-documents')
+                    .upload(fileName, file.buffer, {
+                        contentType: file.mimetype,
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error('[KYC] File upload failed:', uploadError);
+                    // Continue without file URL, or throw error?
+                    // For now, log and continue, but maybe we should fail?
+                    // Let's not fail the whole process, but admin won't see image.
+                } else {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('kyc-documents')
+                        .getPublicUrl(fileName);
+                    documentUrl = publicUrl;
+                }
+            } catch (err) {
+                console.error('[KYC] Storage exception:', err);
+            }
         }
 
         // 3. Update User Table
@@ -106,7 +124,8 @@ class KycService {
                 kyc_status: status,
                 kyc_verified_at: verifiedAt,
                 kyc_rejection_reason: rejectionReason,
-                aadhaar_number: aadhaar_number // Consider hashing/encrypting in prod
+                aadhaar_number: aadhaar_number, // Consider hashing/encrypting in prod
+                aadhaar_photo_url: documentUrl
             })
             .eq('id', userId);
 
@@ -118,7 +137,8 @@ class KycService {
                  updateLocalStore(userId, status, { 
                     verified_at: verifiedAt, 
                     rejection_reason: rejectionReason,
-                    aadhaar_number: aadhaar_number
+                    aadhaar_number: aadhaar_number,
+                    aadhaar_photo_url: documentUrl
                  });
              } else {
                  throw userError;
@@ -127,7 +147,8 @@ class KycService {
             // Also sync to local store just in case
             updateLocalStore(userId, status, { 
                 verified_at: verifiedAt, 
-                rejection_reason: rejectionReason
+                rejection_reason: rejectionReason,
+                aadhaar_photo_url: documentUrl
             });
         }
         
@@ -145,7 +166,8 @@ class KycService {
                 provider: this.mode,
                 raw_response: providerResponse,
                 verified_at: verifiedAt,
-                rejection_reason: rejectionReason
+                rejection_reason: rejectionReason,
+                document_url: documentUrl
             });
         } catch (err) {
             console.warn('[KYC] Failed to insert kyc_record (Table missing?):', err.message);
@@ -155,13 +177,14 @@ class KycService {
         await auditService.log('user', userId, 'KYC_SUBMIT', userId, {
             status,
             mode: this.mode,
-            rejection_reason: rejectionReason
+            rejection_reason: rejectionReason,
+            has_document: !!documentUrl
         }, ipAddress);
 
         return {
             success: true,
             status,
-            message: status === 'approved' ? 'KYC Verified Successfully' : 'KYC Verification Failed',
+            message: status === 'approved' ? 'Identity Verified Successfully' : 'KYC Submitted Successfully. Waiting for Admin Approval.',
             reason: rejectionReason
         };
     }

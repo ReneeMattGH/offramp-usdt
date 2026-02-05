@@ -38,7 +38,7 @@ const AdminAudit = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Audit Logs</h2>
-      <div className="border rounded-lg bg-white">
+      <div className="border rounded-lg bg-white overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

@@ -64,11 +64,9 @@ async function authMiddleware(req, res, next) {
             }
         }
 
-        // --- FORCE KYC APPROVED (TESTING MODE) ---
-        // User requested: "identity verification is always approved so the full app works for testing"
-        req.user.kyc_status = 'approved';
-        req.user.kyc_verified_at = new Date().toISOString();
-        req.user.kyc_rejection_reason = null;
+        // --- KYC FORCE REMOVED (REAL MODE) ---
+        // User requested: "make it to work with real time aahdar data"
+        // We now rely on the DB status fetched above.
         // -----------------------------------------
 
         next();

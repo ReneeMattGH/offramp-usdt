@@ -4,10 +4,17 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
 const { kycStatusStore, sessionStore } = require('./utils/mockStore');
 
 // Middleware
 const { authMiddleware, requireKycApproved } = require('./middleware/auth');
+
+// Configure Multer for memory storage
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Services
 const walletService = require('./services/walletService');
@@ -88,6 +95,53 @@ let globalConfig = {
     daily_limit: 100000.0
 };
 
+const fs = require('fs');
+const path = require('path');
+
+// --- Debug Endpoint ---
+app.post('/api/debug/reset-kyc', async (req, res) => {
+    try {
+        const accountNumber = 'DEMO_USER_001';
+        // 1. Reset in DB
+        const { error } = await supabase
+            .from('users')
+            .update({ 
+                kyc_status: 'not_submitted',
+                kyc_verified_at: null,
+                kyc_rejection_reason: null,
+                aadhaar_number: null,
+                aadhaar_photo_url: null
+            })
+            .eq('account_number', accountNumber);
+
+        // 2. Reset in Mock Store (if used)
+        const { data: user } = await supabase.from('users').select('id').eq('account_number', accountNumber).single();
+        if (user) {
+             kycStatusStore[user.id] = 'not_submitted';
+             
+             // 3. Reset in Local JSON File (kyc_data.json)
+             try {
+                const localStorePath = path.join(__dirname, 'kyc_data.json');
+                if (fs.existsSync(localStorePath)) {
+                    const store = JSON.parse(fs.readFileSync(localStorePath, 'utf8'));
+                    if (store[user.id]) {
+                        delete store[user.id]; // Remove the entry completely or reset it
+                        fs.writeFileSync(localStorePath, JSON.stringify(store, null, 2));
+                    }
+                }
+             } catch (fileErr) {
+                 console.error('Debug: Failed to reset local JSON store:', fileErr);
+             }
+        }
+
+        console.log('Debug: KYC Reset for Demo User (DB + Memory + File)');
+        res.json({ success: true, message: 'KYC Reset' });
+    } catch (err) {
+        console.error('Reset Failed:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- API Endpoints ---
 
 app.get('/', (req, res) => {
@@ -121,13 +175,21 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
                         id: 'mock-user-id',
                         account_number: 'DEMO_USER_001',
                         account_holder_name: 'Demo User',
-                        kyc_status: 'approved'
+                        kyc_status: 'not_submitted'
                     };
                 } else {
                      throw error;
                 }
             }
     
+            if (user && user.account_number === 'DEMO_USER_001' && user.kyc_status === 'approved') {
+                 // DEV MODE: Reset demo user to allow testing KYC flow again
+                 // Only if they are approved, so we don't reset pending/rejected states
+                 console.log('Guest Login: Resetting Demo User KYC status to not_submitted for testing.');
+                 await supabase.from('users').update({ kyc_status: 'not_submitted' }).eq('id', user.id);
+                 user.kyc_status = 'not_submitted';
+            }
+
             // 2. Create if not exists
             if (!user) {
                 const walletAddress = await walletService.generateWallet(); 
@@ -142,7 +204,7 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
                             ifsc_code: 'DEMO0000001',
                             tron_wallet_address: walletAddress.address,
                             encrypted_private_key: walletAddress.privateKey,
-                            kyc_status: 'approved' 
+                            kyc_status: 'not_submitted' 
                         })
                         .select()
                         .single();
@@ -155,7 +217,7 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
                         id: 'mock-user-id',
                         account_number: 'DEMO_USER_001',
                         account_holder_name: 'Demo User',
-                        kyc_status: 'approved'
+                        kyc_status: 'not_submitted'
                     };
                 }
             }
@@ -968,14 +1030,15 @@ app.get('/api/admin/audit-logs', async (req, res) => {
 
 
 // User: Submit KYC
-app.post('/api/verify-kyc', authMiddleware, async (req, res) => {
+app.post('/api/verify-kyc', authMiddleware, upload.single('aadhaar_image'), async (req, res) => {
     const { aadhaar_number, full_name, dob } = req.body;
     const user_id = req.user.id;
+    const file = req.file;
 
     if (!aadhaar_number) return res.status(400).json({ error: 'Missing required fields' });
 
     try {
-        const result = await kycService.submitKyc(user_id, { aadhaar_number, full_name, dob }, req.clientIp);
+        const result = await kycService.submitKyc(user_id, { aadhaar_number, full_name, dob }, req.clientIp, file);
         res.json(result);
     } catch (err) {
         console.error('KYC Error:', err);

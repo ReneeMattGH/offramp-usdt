@@ -100,6 +100,33 @@ class TronService {
         }
     }
 
+    async getTreasuryBalance(address) {
+        try {
+            if (!address) return { trx: 0, usdt: 0 };
+            
+            // Get TRX Balance
+            const trxBalance = await tronWeb.trx.getBalance(address);
+            
+            // Get USDT Balance
+            let usdtBalance = 0;
+            try {
+                const contract = await tronWeb.contract().at(this.usdtContractAddress);
+                const balance = await contract.balanceOf(address).call();
+                usdtBalance = parseInt(balance.toString()) / 1000000;
+            } catch (e) {
+                console.warn('Failed to fetch USDT balance:', e.message);
+            }
+
+            return {
+                trx: tronWeb.fromSun(trxBalance),
+                usdt: usdtBalance
+            };
+        } catch (error) {
+            console.error('Get Treasury Balance Error:', error);
+            return { trx: 0, usdt: 0, error: error.message };
+        }
+    }
+
     async processAddress(addrData) {
         try {
             // Check TRC20 Transactions via TronGrid (Nile)

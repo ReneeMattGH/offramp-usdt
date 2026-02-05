@@ -6,21 +6,29 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
 // Pages
-// import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Deposit from "./pages/Deposit";
 import Withdraw from "./pages/Withdraw";
 import WithdrawUSDT from "./pages/WithdrawUSDT";
 import Transactions from "./pages/Transactions";
 import Settings from "./pages/Settings";
-import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+
+// Admin Pages
+import AdminLogin from "./pages/Admin/Login";
+import { AdminLayout } from "./components/layout/AdminLayout";
+import AdminDashboard from "./pages/Admin/Dashboard";
+import AdminKYC from "./pages/Admin/KYC";
+import AdminDeposits from "./pages/Admin/Deposits";
+import AdminExchange from "./pages/Admin/Exchange";
+import AdminUsers from "./pages/Admin/Users";
+import AdminAudit from "./pages/Admin/Audit";
 
 const queryClient = new QueryClient();
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,12 +46,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Public Route wrapper (redirect if authenticated)
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  // Always redirect to dashboard since auth is bypassed
-  return <Navigate to="/dashboard" replace />;
-}
-
 function AppRoutes() {
   return (
     <Routes>
@@ -51,41 +53,25 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       
       {/* Protected routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/deposit" element={
-        <ProtectedRoute>
-          <Deposit />
-        </ProtectedRoute>
-      } />
-      <Route path="/withdraw" element={
-        <ProtectedRoute>
-          <Withdraw />
-        </ProtectedRoute>
-      } />
-      <Route path="/withdraw-usdt" element={
-        <ProtectedRoute>
-          <WithdrawUSDT />
-        </ProtectedRoute>
-      } />
-      <Route path="/transactions" element={
-        <ProtectedRoute>
-          <Transactions />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin" element={
-        <ProtectedRoute>
-          <Admin />
-        </ProtectedRoute>
-      } />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/deposit" element={<ProtectedRoute><Deposit /></ProtectedRoute>} />
+      <Route path="/withdraw" element={<ProtectedRoute><Withdraw /></ProtectedRoute>} />
+      <Route path="/withdraw-usdt" element={<ProtectedRoute><WithdrawUSDT /></ProtectedRoute>} />
+      <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+      {/* Admin Routes */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="kyc" element={<AdminKYC />} />
+        <Route path="deposits" element={<AdminDeposits />} />
+        <Route path="orders" element={<AdminExchange />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="audit" element={<AdminAudit />} />
+        {/* Default redirect to dashboard */}
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+      </Route>
 
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />

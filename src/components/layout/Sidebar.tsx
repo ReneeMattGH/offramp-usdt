@@ -6,7 +6,8 @@ import {
   Receipt, 
   Settings, 
   LogOut,
-  Wallet
+  Wallet,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,16 @@ export function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             <p className="text-xs text-muted-foreground">A/C: ••••{user.account_number.slice(-4)}</p>
           </div>
         )}
+        
+        <Link
+          to="/admin"
+          onClick={onNavClick}
+          className="nav-link nav-link-inactive w-full justify-start mb-2"
+        >
+          <Shield className="w-5 h-5" />
+          <span>Admin</span>
+        </Link>
+
         <button
           onClick={logout}
           className="nav-link nav-link-inactive w-full justify-start"

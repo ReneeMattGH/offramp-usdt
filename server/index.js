@@ -20,6 +20,7 @@ const auditService = require('./services/auditService');
 const complianceService = require('./services/complianceService');
 const withdrawalWorker = require('./services/withdrawalWorker');
 const configService = require('./services/configService');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 app.use(cors());
@@ -30,6 +31,9 @@ app.use((req, res, next) => {
     req.clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     next();
 });
+
+// Routes
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 3000;
 

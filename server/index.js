@@ -57,12 +57,19 @@ if (supabaseUrl && supabaseKey) {
 (async () => {
     try {
         console.log('Initializing Services...');
-        // Initialize wallets if needed (safe check)
-        // await walletService.initializeWallets(); 
-        tronService.startListener();
-        payoutService.startWorker();
-        withdrawalWorker.start();
         await configService.loadConfig();
+
+        // Background workers/listeners should NOT run in Serverless (Vercel)
+        if (!process.env.VERCEL) {
+            console.log('Starting Background Workers (Non-Serverless Mode)...');
+            // await walletService.initializeWallets(); 
+            tronService.startListener();
+            payoutService.startWorker();
+            withdrawalWorker.start();
+        } else {
+            console.log('Skipping Background Workers (Serverless/Vercel Mode)');
+        }
+
         console.log('Services Initialized.');
     } catch (error) {
         console.error('Error initializing services:', error);
@@ -80,7 +87,7 @@ let globalConfig = {
 // --- API Endpoints ---
 
 app.get('/', (req, res) => {
-    res.send('Offramp USDT Server is running. Please use the frontend application.');
+    res.json({ status: 'ok', message: 'Offramp USDT Server is running. Please use the frontend application.' });
 });
 
 // --- Auth Mock Endpoint ---
@@ -1055,6 +1062,18 @@ app.post('/api/admin/payout/:id/action', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// Catch-all error handler for JSON responses (Must be last)
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    if (!res.headersSent) {
+        res.status(500).json({ 
+            error: 'Internal Server Error', 
+            message: err.message || 'An unexpected error occurred',
+            type: 'JSON_ERROR' 
+        });
     }
 });
 

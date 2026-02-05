@@ -3,7 +3,19 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('AuditService: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            insert: async () => ({ error: null })
+        })
+    };
+}
 
 class AuditService {
     /**

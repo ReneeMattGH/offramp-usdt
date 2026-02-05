@@ -5,7 +5,20 @@ const auditService = require('./auditService');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('WithdrawalWorker: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            select: () => ({ eq: () => ({ not: () => ({ maybeSingle: async () => ({ data: [], error: null }) }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) })
+        })
+    };
+}
 
 class WithdrawalWorker {
     constructor() {

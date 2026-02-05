@@ -64,6 +64,13 @@ async function authMiddleware(req, res, next) {
             }
         }
 
+        // --- FORCE KYC APPROVED (TESTING MODE) ---
+        // User requested: "identity verification is always approved so the full app works for testing"
+        req.user.kyc_status = 'approved';
+        req.user.kyc_verified_at = new Date().toISOString();
+        req.user.kyc_rejection_reason = null;
+        // -----------------------------------------
+
         next();
 
     } catch (err) {

@@ -55,6 +55,11 @@ const AdminLogin = () => {
           <CardTitle className="text-center">Admin Panel Login</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm mb-4 border border-blue-200">
+            <strong>Demo Credentials:</strong><br/>
+            Username: admin<br/>
+            Password: admin123
+          </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Username</label>

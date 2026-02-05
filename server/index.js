@@ -36,7 +36,22 @@ const PORT = process.env.PORT || 3000;
 // Supabase Setup
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('Server: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), single: async () => ({ data: null, error: null }) }), order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
+            insert: async () => ({ data: {}, error: null, select: () => ({ single: async () => ({ data: {}, error: null }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) }),
+            rpc: async () => ({ error: null })
+        })
+    };
+}
 
 // Initialize Services
 (async () => {

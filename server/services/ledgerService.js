@@ -3,7 +3,22 @@ const { v4: uuidv4 } = require('uuid');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('LedgerService: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), single: async () => ({ data: null, error: null }) }) }),
+            insert: async () => ({ error: null }),
+            update: () => ({ eq: async () => ({ error: null }) })
+        }),
+        rpc: async () => ({ data: true, error: null })
+    };
+}
 
 class LedgerService {
 

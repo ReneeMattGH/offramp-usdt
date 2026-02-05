@@ -7,7 +7,21 @@ const cron = require('node-cron');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('TronService: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), single: async () => ({ data: null, error: null }) }) }),
+            insert: async () => ({ error: null }),
+            update: () => ({ eq: async () => ({ error: null }) })
+        })
+    };
+}
 
 // Tron Config
 const TRON_FULL_NODE = 'https://nile.trongrid.io';

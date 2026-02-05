@@ -3,7 +3,22 @@ const { kycStatusStore, sessionStore } = require('../utils/mockStore');
 const kycService = require('../services/kycService');
 require('dotenv').config();
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+// Safe Supabase Initialization
+let supabase;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+} else {
+    console.warn('Auth Middleware: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            select: () => ({
+                eq: () => ({
+                    maybeSingle: async () => ({ data: null, error: { code: 'MISSING_CREDS', message: 'Credentials missing' } })
+                })
+            })
+        })
+    };
+}
 
 async function authMiddleware(req, res, next) {
     try {

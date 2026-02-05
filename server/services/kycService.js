@@ -7,12 +7,33 @@ require('dotenv').config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Initialization
+let supabase;
+try {
+    if (supabaseUrl && supabaseKey) {
+        supabase = createClient(supabaseUrl, supabaseKey);
+    } else {
+        console.warn('KYC Service: Supabase credentials missing. Running in mock/fallback mode.');
+        supabase = {
+            from: () => ({
+                select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), single: async () => ({ data: null, error: { code: 'PGRST204', message: 'Mock Error' } }) }) }),
+                update: () => ({ eq: async () => ({ error: { code: 'PGRST204', message: 'Mock Error' } }) }),
+                insert: async () => ({ error: null })
+            })
+        };
+    }
+} catch (e) {
+    console.error('KYC Service: Failed to initialize Supabase client:', e);
+}
 
 const LOCAL_STORE_PATH = path.join(__dirname, '../kyc_data.json');
 
 // Helper to manage local fallback store
 function getLocalStore() {
+    // Disable file store in Vercel/Serverless environment to prevent read-only errors
+    if (process.env.VERCEL) return {};
+    
     try {
         if (!fs.existsSync(LOCAL_STORE_PATH)) return {};
         return JSON.parse(fs.readFileSync(LOCAL_STORE_PATH, 'utf8'));
@@ -22,6 +43,9 @@ function getLocalStore() {
 }
 
 function updateLocalStore(userId, status, data = {}) {
+    // Disable file store in Vercel/Serverless environment
+    if (process.env.VERCEL) return;
+
     try {
         const store = getLocalStore();
         store[userId] = { 

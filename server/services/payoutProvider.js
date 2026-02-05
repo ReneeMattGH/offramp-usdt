@@ -1,5 +1,20 @@
 const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Safe Supabase Initialization
+let supabase;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+    console.warn('PayoutProvider: Supabase credentials missing. Using mock fallback.');
+    supabase = {
+        from: () => ({
+            update: () => ({ eq: async () => ({ error: null }) })
+        })
+    };
+}
 
 class RazorpayProvider {
     constructor() {

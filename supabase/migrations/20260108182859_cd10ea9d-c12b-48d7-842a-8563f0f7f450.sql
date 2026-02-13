@@ -113,10 +113,6 @@ CREATE POLICY "Withdrawals can be inserted" ON public.withdrawals
 CREATE POLICY "Withdrawals can be updated" ON public.withdrawals
     FOR UPDATE USING (true);
 
--- Insert demo user
-INSERT INTO public.users (account_holder_name, account_number, ifsc_code, tron_wallet_address)
-VALUES ('demoguy', '24682468', '1234578', 'TBD_WALLET_ADDRESS');
-
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$

@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS blockchain_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tx_hash VARCHAR(255) UNIQUE NOT NULL,
-    network VARCHAR(50) DEFAULT 'tron_nile',
+    network VARCHAR(50) DEFAULT 'tron_mainnet',
     from_address VARCHAR(255) NOT NULL,
     to_address VARCHAR(255) NOT NULL,
     token_symbol VARCHAR(50) DEFAULT 'USDT',

@@ -17,7 +17,6 @@ File: `supabase/migrations/20260125000002_add_exchange_system.sql`
 ## 3. KYC & User Schema
 File: `supabase/migrations/20260125000003_ensure_kyc_status.sql`
 - Adds `kyc_status` column to `users` table.
-- Adds Razorpay contact fields (`razorpay_contact_id`, `razorpay_fund_account_id`).
 - Ensures `is_admin` column exists.
 
 ## Verification

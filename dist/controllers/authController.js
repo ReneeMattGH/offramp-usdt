@@ -1,6 +1,11 @@
 import { BaseController } from './baseController.js';
 import authService from '../services/authService.js';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
+import config from '../config/index.js';
+import supabase from '../utils/supabase.js';
+import crypto from 'crypto';
+import referralService from '../services/referralService.js';
 const signupSchema = z.object({
     accountHolderName: z.string().min(2),
     accountNumber: z.string().min(8),
@@ -58,6 +63,64 @@ export class AuthController extends BaseController {
             if (error.message === 'Invalid OTP' || error.message === 'User already exists') {
                 return this.clientError(res, error.message);
             }
+            return this.fail(res, error);
+        }
+    }
+    async me(req, res) {
+        try {
+            const authHeader = req.headers.authorization;
+            const token = authHeader && authHeader.split(' ')[1];
+            if (!token)
+                return this.unauthorized(res, 'No token');
+            const decoded = jwt.verify(token, config.jwtSecret);
+            const { data: user, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', decoded.id)
+                .single();
+            if (error || !user)
+                return this.unauthorized(res, 'Invalid token');
+            return this.ok(res, user);
+        }
+        catch (error) {
+            return this.fail(res, error);
+        }
+    }
+    async guestLogin(req, res) {
+        try {
+            if (config.nodeEnv !== 'development') {
+                return this.forbidden(res, 'Guest login only allowed in development');
+            }
+            const { referralCode } = req.body;
+            const randomAcct = `GUEST${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const userId = crypto.randomUUID();
+            const myReferralCode = referralService.generateCode();
+            const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert({
+                id: userId,
+                account_holder_name: 'Guest User',
+                account_number: randomAcct,
+                ifsc_code: 'SBIN0000000',
+                referral_code: myReferralCode,
+                kyc_status: 'not_submitted',
+                email: `${randomAcct}@guest.local`
+            })
+                .select()
+                .single();
+            if (createError)
+                throw createError;
+            // Process referral if exists
+            if (referralCode) {
+                await referralService.processSignupReferral(userId, referralCode);
+            }
+            await supabase
+                .from('ledger_accounts')
+                .insert({ user_id: userId, available_balance: 0, locked_balance: 0 });
+            const token = jwt.sign({ id: userId }, config.jwtSecret, { expiresIn: '7d' });
+            return this.ok(res, { user: newUser, token });
+        }
+        catch (error) {
             return this.fail(res, error);
         }
     }

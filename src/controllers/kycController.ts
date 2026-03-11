@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { BaseController } from './baseController.js';
 import { kycService } from '../services/kycService.js';
+import { AuthRequest } from '../middleware/authMiddleware.js';
 
 export class KycController extends BaseController {
   private static instance: KycController;
@@ -16,9 +17,10 @@ export class KycController extends BaseController {
     return KycController.instance;
   }
 
-  async submitKyc(req: Request, res: Response) {
+  async submitKyc(req: AuthRequest, res: Response) {
     try {
-      const userId = (req as any).user.id;
+      if (!req.user) return this.unauthorized(res);
+      const userId = req.user.id;
       const result = await kycService.submitKyc(
         userId,
         req.body,
@@ -31,9 +33,10 @@ export class KycController extends BaseController {
     }
   }
 
-  async getStatus(req: Request, res: Response) {
+  async getStatus(req: AuthRequest, res: Response) {
     try {
-      const userId = (req as any).user.id;
+      if (!req.user) return this.unauthorized(res);
+      const userId = req.user.id;
       const status = await kycService.getKycStatus(userId);
       return this.ok(res, status);
     } catch (err: any) {

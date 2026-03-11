@@ -1,14 +1,14 @@
 import supabase from '../utils/supabase.js';
-import { RazorpayProvider } from '../services/payoutProvider.js';
+import { PayoutProvider } from '../services/payoutProvider.js';
 
 export class PayoutWorker {
   private static instance: PayoutWorker;
   private isProcessing: boolean = false;
   private timer: NodeJS.Timeout | null = null;
-  private provider: RazorpayProvider;
+  private provider: PayoutProvider;
 
   private constructor() {
-    this.provider = new RazorpayProvider();
+    this.provider = new PayoutProvider();
   }
 
   public static getInstance(): PayoutWorker {
@@ -62,7 +62,7 @@ export class PayoutWorker {
           .from('payout_orders')
           .update({ 
             status: 'COMPLETED', 
-            gateway_ref_id: result.utr || result.payout_id,
+            gateway_ref_id: (result as any).utr || result.payout_id,
             updated_at: new Date().toISOString()
           })
           .eq('id', order.id);

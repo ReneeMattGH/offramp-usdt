@@ -1,12 +1,12 @@
 import supabase from '../utils/supabase.js';
-import { RazorpayProvider } from '../services/payoutProvider.js';
+import { PayoutProvider } from '../services/payoutProvider.js';
 export class PayoutWorker {
     static instance;
     isProcessing = false;
     timer = null;
     provider;
     constructor() {
-        this.provider = new RazorpayProvider();
+        this.provider = new PayoutProvider();
     }
     static getInstance() {
         if (!PayoutWorker.instance) {

@@ -9,12 +9,7 @@ export declare const config: {
     treasuryAddress: string;
     systemPrivateKey: string;
     encryptionKey: string;
-    razorpay: {
-        keyId: string;
-        keySecret: string;
-        bankAccount: string;
-        webhookSecret: string;
-    };
+    enableRealPayouts: boolean;
     kycMode: "MANUAL" | "AUTO";
     tron: {
         fullNode: string;

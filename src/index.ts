@@ -1,13 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import config from './config/index.js';
 import authController from './controllers/authController.js';
 import walletController from './controllers/walletController.js';
 import exchangeController from './controllers/exchangeController.js';
 import adminController from './controllers/adminController.js';
 import referralController from './controllers/referralController.js';
-import webhookController from './controllers/webhookController.js';
 import { kycController } from './controllers/kycController.js';
 import tronWorker from './workers/tronWorker.js';
 import payoutWorker from './workers/payoutWorker.js';
@@ -15,6 +16,8 @@ import withdrawalWorker from './workers/withdrawalWorker.js';
 import configService from './services/configService.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { adminAuth } from './middleware/adminAuth.js';
+import walletService from './services/walletService.js';
+import exchangeService from './services/exchangeService.js';
 
 const app = express();
 
@@ -36,6 +39,8 @@ const authRouter = express.Router();
 authRouter.post('/send-otp', authController.sendOTP.bind(authController));
 authRouter.post('/signup', authController.signup.bind(authController));
 authRouter.post('/login', authController.login.bind(authController));
+authRouter.get('/me', authController.me.bind(authController));
+authRouter.post('/guest-login', authController.guestLogin.bind(authController));
 
 apiRouter.use('/auth', authRouter);
 
@@ -67,12 +72,6 @@ referralRouter.get('/stats', authenticate, referralController.getStats.bind(refe
 
 apiRouter.use('/referral', referralRouter);
 
-// Webhook Routes
-const webhookRouter = express.Router();
-webhookRouter.post('/razorpay', webhookController.handleRazorpay.bind(webhookController));
-
-apiRouter.use('/webhooks', webhookRouter);
-
 // Admin Routes
 const adminRouter = express.Router();
 adminRouter.post('/login', adminController.login.bind(adminController));
@@ -101,6 +100,74 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', apiRouter);
+
+// Static frontend
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.resolve(__dirname, '../public')));
+
+// Real-time streams (SSE)
+const streamRouter = express.Router();
+
+streamRouter.get('/balance', authenticate, async (req: any, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const userId = req.user?.id;
+  if (!userId) {
+    res.write(`event: error\ndata: ${JSON.stringify({ message: 'Unauthorized' })}\n\n`);
+    return res.end();
+  }
+
+  let closed = false;
+  const interval = setInterval(async () => {
+    if (closed) return;
+    try {
+      const balance = await walletService.getBalance(userId);
+      res.write(`event: balance\ndata: ${JSON.stringify(balance)}\n\n`);
+    } catch (e: any) {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: e.message })}\n\n`);
+    }
+  }, 5000);
+
+  req.on('close', () => {
+    closed = true;
+    clearInterval(interval);
+  });
+});
+
+streamRouter.get('/orders', authenticate, async (req: any, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const userId = req.user?.id;
+  if (!userId) {
+    res.write(`event: error\ndata: ${JSON.stringify({ message: 'Unauthorized' })}\n\n`);
+    return res.end();
+  }
+
+  let closed = false;
+  const interval = setInterval(async () => {
+    if (closed) return;
+    try {
+      const orders = await exchangeService.getOrders(userId);
+      res.write(`event: orders\ndata: ${JSON.stringify(orders)}\n\n`);
+    } catch (e: any) {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: e.message })}\n\n`);
+    }
+  }, 5000);
+
+  req.on('close', () => {
+    closed = true;
+    clearInterval(interval);
+  });
+});
+
+app.use('/api/stream', streamRouter);
 
 // Initialize Workers & Start Server
 const startServer = async () => {

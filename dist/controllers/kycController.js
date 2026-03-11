@@ -13,6 +13,8 @@ export class KycController extends BaseController {
     }
     async submitKyc(req, res) {
         try {
+            if (!req.user)
+                return this.unauthorized(res);
             const userId = req.user.id;
             const result = await kycService.submitKyc(userId, req.body, req.ip || null, req.file);
             return this.ok(res, result);
@@ -23,6 +25,8 @@ export class KycController extends BaseController {
     }
     async getStatus(req, res) {
         try {
+            if (!req.user)
+                return this.unauthorized(res);
             const userId = req.user.id;
             const status = await kycService.getKycStatus(userId);
             return this.ok(res, status);

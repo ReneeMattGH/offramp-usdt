@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Offramp USDT</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Offramp USDT</h1>
+
+    <section id="auth-section">
+      <h2>Login / Signup</h2>
+      <div class="auth-row">
+        <input id="accountNumber" placeholder="Account Number" />
+        <button id="sendOtpBtn">Send OTP</button>
+      </div>
+      <div class="auth-row">
+        <input id="otp" placeholder="OTP (6 digits)" />
+        <button id="loginBtn">Login</button>
+      </div>
+      <details>
+        <summary>Signup</summary>
+        <div class="auth-row">
+          <input id="name" placeholder="Account Holder Name" />
+          <input id="ifsc" placeholder="IFSC Code" />
+          <input id="referral" placeholder="Referral Code (optional)" />
+          <button id="signupBtn">Signup</button>
+        </div>
+      </details>
+      <div id="authStatus" class="status"></div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <h2>Dashboard</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Balance (real-time)</h3>
+          <div id="balance">—</div>
+        </div>
+        <div class="card">
+          <h3>Deposit Address</h3>
+          <button id="genAddrBtn">Generate Address</button>
+          <div id="addrResult">—</div>
+        </div>
+        <div class="card">
+          <h3>Exchange Rate</h3>
+          <div id="rate">—</div>
+          <div>
+            <input id="usdtAmount" type="number" placeholder="USDT amount" />
+            <input id="bankAcc" placeholder="Bank Account Number" />
+            <input id="bankIfsc" placeholder="IFSC" />
+            <input id="bankName" placeholder="Account Holder" />
+            <button id="createOrderBtn">Create Order</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>My Orders (real-time)</h3>
+          <ul id="orders"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="kyc" class="hidden">
+      <h2>KYC</h2>
+      <div>
+        <button id="kycStatusBtn">Check Status</button>
+        <div id="kycStatus">—</div>
+      </div>
+      <div>
+        <input id="aadhaar" placeholder="Aadhaar Number (12 digits)" />
+        <input id="fullName" placeholder="Full Name" />
+        <input id="dob" placeholder="DOB (YYYY-MM-DD)" />
+        <input id="aadhaarImg" type="file" accept="image/*" />
+        <button id="submitKycBtn">Submit KYC</button>
+        <div id="kycSubmitStatus" class="status"></div>
+      </div>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
+

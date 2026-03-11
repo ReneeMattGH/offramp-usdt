@@ -4,6 +4,8 @@ export declare class AuthController extends BaseController {
     sendOTP(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     login(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     signup(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    me(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    guestLogin(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 declare const _default: AuthController;
 export default _default;

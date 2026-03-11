@@ -1,22 +1,10 @@
-export declare class RazorpayProvider {
-    private config;
+export declare class PayoutProvider {
     initiatePayout(order: any, user: any, bank: any): Promise<{
         status: string;
-        reason: any;
-        raw: any;
-        payout_id?: undefined;
-        utr?: undefined;
-    } | {
-        status: string;
-        payout_id: any;
-        utr: any;
-        raw: any;
-        reason?: undefined;
-    } | {
-        status: string;
-        reason: any;
-        raw?: undefined;
-        payout_id?: undefined;
-        utr?: undefined;
+        reason: string;
+        payout_id: string;
+        raw: {
+            mode: string;
+        };
     }>;
 }

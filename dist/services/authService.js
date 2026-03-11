@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import smsService from './smsService.js';
 import { v4 as uuidv4 } from 'uuid';
+import referralService from './referralService.js';
 export class AuthService {
     static instance;
     constructor() { }
@@ -93,8 +94,7 @@ export class AuthService {
             throw new Error('User already exists');
         }
         const userId = uuidv4();
-        // Referral code generation would happen here (omitted for brevity, assume a helper exists)
-        const myReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const myReferralCode = referralService.generateCode();
         const { data: newUser, error: createError } = await supabase
             .from('users')
             .insert({
@@ -110,6 +110,10 @@ export class AuthService {
             .single();
         if (createError)
             throw createError;
+        // Process referral if exists
+        if (data.referralCode) {
+            await referralService.processSignupReferral(userId, data.referralCode);
+        }
         // Create ledger account automatically
         await supabase
             .from('ledger_accounts')

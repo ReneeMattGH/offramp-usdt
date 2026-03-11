@@ -13,7 +13,7 @@ ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;
 CREATE TABLE IF NOT EXISTS payout_attempts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     exchange_order_id UUID REFERENCES exchange_orders(id) NOT NULL,
-    provider VARCHAR(50) NOT NULL, -- 'RAZORPAY', 'CASHFREE'
+    provider VARCHAR(50) NOT NULL, -- 'MANUAL', 'CASHFREE'
     request_payload JSONB,
     response_payload JSONB,
     status VARCHAR(50), -- 'REQUEST', 'SUCCESS', 'FAILED', 'WEBHOOK'

@@ -1,0 +1,15 @@
+Backend Update for Frontend:
+
+1. Razorpay is completely out. No SDKs, no checkout popups, no webhooks. 
+2. Payouts are manual now. Orders hit 'PROCESSING' and wait for admin approval. 
+3. Added SSE streams for live updates—use these instead of polling:
+   - Balance: GET /api/stream/balance
+   - Orders: GET /api/stream/orders
+4. Build script updated. Deploying on Render works with:
+   - Build: npm run build
+   - Start: npm start
+
+Tasks for Frontend:
+- Nuke all Razorpay frontend code/scripts.
+- Hook up the EventSource listeners for balance and order updates.
+- Update the UI to show that payouts are manual/pending admin.

@@ -21,8 +21,8 @@ export class AuthService {
     return jwt.sign({ id: userId }, config.jwtSecret, { expiresIn: '7d' });
   }
 
-  async sendOTP(accountNumber: string): Promise<boolean> {
-    if (!accountNumber) throw new Error('Account number required');
+  async sendOTP(phoneNumber: string): Promise<boolean> {
+    if (!phoneNumber) throw new Error('Phone number required');
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
@@ -30,11 +30,11 @@ export class AuthService {
     const { error } = await supabase
       .from('otp_store')
       .upsert({
-        account_number: accountNumber,
+        phone_number: phoneNumber,
         otp,
         expires_at: expiresAt,
         attempts: 0
-      }, { onConflict: 'account_number' });
+      }, { onConflict: 'phone_number' });
 
     if (error) {
       console.error('[AUTH_SERVICE] OTP Store Error:', error);
@@ -42,15 +42,14 @@ export class AuthService {
     }
 
     // In a production environment, this would use a real SMS gateway
-    // The accountNumber is used as the phone number in this context
-    return await smsService.sendOTP(accountNumber, otp);
+    return await smsService.sendOTP(phoneNumber, otp);
   }
 
-  async verifyOTP(accountNumber: string, otp: string): Promise<boolean> {
+  async verifyOTP(phoneNumber: string, otp: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('otp_store')
       .select('*')
-      .eq('account_number', accountNumber)
+      .eq('phone_number', phoneNumber)
       .single();
 
     if (error || !data) {
@@ -58,12 +57,12 @@ export class AuthService {
     }
 
     if (new Date(data.expires_at) < new Date()) {
-      await this.deleteOTP(accountNumber);
+      await this.deleteOTP(phoneNumber);
       throw new Error('OTP expired');
     }
 
     if (data.attempts >= 5) {
-      await this.deleteOTP(accountNumber);
+      await this.deleteOTP(phoneNumber);
       throw new Error('Too many failed attempts');
     }
 
@@ -71,28 +70,28 @@ export class AuthService {
       await supabase
         .from('otp_store')
         .update({ attempts: data.attempts + 1 })
-        .eq('account_number', accountNumber);
+        .eq('phone_number', phoneNumber);
       throw new Error('Invalid OTP');
     }
 
-    await this.deleteOTP(accountNumber);
+    await this.deleteOTP(phoneNumber);
     return true;
   }
 
-  private async deleteOTP(accountNumber: string): Promise<void> {
+  private async deleteOTP(phoneNumber: string): Promise<void> {
     await supabase
       .from('otp_store')
       .delete()
-      .eq('account_number', accountNumber);
+      .eq('phone_number', phoneNumber);
   }
 
-  async login(accountNumber: string, otp: string) {
-    await this.verifyOTP(accountNumber, otp);
+  async login(phoneNumber: string, otp: string) {
+    await this.verifyOTP(phoneNumber, otp);
 
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('account_number', accountNumber)
+      .eq('phone_number', phoneNumber)
       .maybeSingle();
 
     if (!user) {
@@ -105,17 +104,18 @@ export class AuthService {
 
   async signup(data: {
     accountHolderName: string;
+    phoneNumber: string;
     accountNumber: string;
     ifscCode: string;
     otp: string;
     referralCode?: string;
   }) {
-    await this.verifyOTP(data.accountNumber, data.otp);
+    await this.verifyOTP(data.phoneNumber, data.otp);
 
     const { data: existing } = await supabase
       .from('users')
       .select('id')
-      .eq('account_number', data.accountNumber)
+      .eq('phone_number', data.phoneNumber)
       .maybeSingle();
 
     if (existing) {
@@ -130,11 +130,12 @@ export class AuthService {
       .insert({
         id: userId,
         account_holder_name: data.accountHolderName,
+        phone_number: data.phoneNumber,
         account_number: data.accountNumber,
         ifsc_code: data.ifscCode,
         referral_code: myReferralCode,
         kyc_status: 'not_submitted',
-        email: `${data.accountNumber}@internal.local`
+        email: `${data.phoneNumber}@internal.local`
       })
       .select()
       .single();

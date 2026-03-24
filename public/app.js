@@ -2,6 +2,7 @@ const API = '/api';
 let token = localStorage.getItem('token') || '';
 
 const els = {
+  phoneNumber: document.getElementById('phoneNumber'),
   accountNumber: document.getElementById('accountNumber'),
   otp: document.getElementById('otp'),
   sendOtpBtn: document.getElementById('sendOtpBtn'),
@@ -63,7 +64,7 @@ function showApp() {
 // Auth
 els.sendOtpBtn.onclick = async () => {
   try {
-    await api('/auth/send-otp', 'POST', { accountNumber: els.accountNumber.value.trim() });
+    await api('/auth/send-otp', 'POST', { phoneNumber: els.phoneNumber.value.trim() });
     setStatus(els.authStatus, 'OTP sent');
   } catch (e) {
     setStatus(els.authStatus, `Error: ${e.message}`);
@@ -73,7 +74,7 @@ els.sendOtpBtn.onclick = async () => {
 els.loginBtn.onclick = async () => {
   try {
     const data = await api('/auth/login', 'POST', {
-      accountNumber: els.accountNumber.value.trim(),
+      phoneNumber: els.phoneNumber.value.trim(),
       otp: els.otp.value.trim(),
     });
     token = data.token;
@@ -89,6 +90,7 @@ els.signupBtn.onclick = async () => {
   try {
     const data = await api('/auth/signup', 'POST', {
       accountHolderName: els.name.value.trim(),
+      phoneNumber: els.phoneNumber.value.trim(),
       accountNumber: els.accountNumber.value.trim(),
       ifscCode: els.ifsc.value.trim(),
       otp: els.otp.value.trim(),

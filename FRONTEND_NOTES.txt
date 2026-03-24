@@ -1,0 +1,29 @@
+Backend Refactor - Integration Notes:
+
+We've completely stripped out Razorpay to fix the deployment issues and moved to a manual payout system. Here’s what you need to update on the frontend:
+
+1. Razorpay Removal:
+- You can now safely remove all Razorpay scripts from index.html.
+- Delete any checkout logic or "Pay Now" handlers that were triggering the Razorpay popup.
+- The webhook listener is gone, so don't expect any callbacks from them.
+
+2. Payout Workflow Changes:
+- Payouts are now handled manually by the admin. 
+- When a user submits an exchange, the backend locks the USDT and the order status goes to 'PROCESSING'.
+- You should update the UI to show a "Pending Admin Approval" or "Processing" message instead of a payment gateway.
+
+3. Live Updates (SSE) - No more Polling:
+- I've added Server-Sent Events (SSE) so you don't have to keep polling the server for balance or order changes.
+- Balance Updates: Use `new EventSource('/api/stream/balance')`. It emits a 'balance' event whenever something changes.
+- Order Updates: Use `new EventSource('/api/stream/orders')`. It emits an 'orders' event. This is perfect for updating the order history list in real-time.
+
+4. Deployment & Build:
+- If you're testing locally or deploying to Render, the project now builds from the root but runs the server code.
+- Build: `npm run build` (This handles the server-side tsc and installs).
+- Start: `npm start` (Runs the compiled dist).
+- The root .env is what the server uses now.
+
+5. Env Vars:
+- No need to set any RAZORPAY_ variables in Render anymore. I've cleaned up the config schema so it won't crash without them.
+
+Let me know if you need the exact event listener snippets or if any of the new stream endpoints give you trouble.

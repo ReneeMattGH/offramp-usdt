@@ -10,6 +10,7 @@ import referralService from '../services/referralService.js';
 
 const signupSchema = z.object({
   accountHolderName: z.string().min(2),
+  phoneNumber: z.string().min(10),
   accountNumber: z.string().min(8),
   ifscCode: z.string().length(11),
   otp: z.string().length(6),
@@ -17,12 +18,12 @@ const signupSchema = z.object({
 });
 
 const loginSchema = z.object({
-  accountNumber: z.string().min(8),
+  phoneNumber: z.string().min(10),
   otp: z.string().length(6),
 });
 
 const sendOtpSchema = z.object({
-  accountNumber: z.string().min(8),
+  phoneNumber: z.string().min(10),
 });
 
 export class AuthController extends BaseController {
@@ -30,10 +31,10 @@ export class AuthController extends BaseController {
     try {
       const parsed = sendOtpSchema.safeParse(req.body);
       if (!parsed.success) {
-        return this.clientError(res, 'Invalid account number');
+        return this.clientError(res, 'Invalid phone number');
       }
 
-      await authService.sendOTP(parsed.data.accountNumber);
+      await authService.sendOTP(parsed.data.phoneNumber);
       return this.ok(res, { message: 'OTP sent successfully' });
     } catch (error: any) {
       return this.fail(res, error);
@@ -47,7 +48,7 @@ export class AuthController extends BaseController {
         return this.clientError(res, 'Invalid login data');
       }
 
-      const result = await authService.login(parsed.data.accountNumber, parsed.data.otp);
+      const result = await authService.login(parsed.data.phoneNumber, parsed.data.otp);
       return this.ok(res, result);
     } catch (error: any) {
       if (error.message === 'Invalid OTP' || error.message === 'User not found. Please sign up.') {
@@ -102,6 +103,7 @@ export class AuthController extends BaseController {
 
       const { referralCode } = req.body as { referralCode?: string };
       const randomAcct = `GUEST${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const randomPhone = `+91${Math.floor(6000000000 + Math.random() * 4000000000)}`;
       const userId = crypto.randomUUID();
       const myReferralCode = referralService.generateCode();
 
@@ -110,6 +112,7 @@ export class AuthController extends BaseController {
         .insert({
           id: userId,
           account_holder_name: 'Guest User',
+          phone_number: randomPhone,
           account_number: randomAcct,
           ifsc_code: 'SBIN0000000',
           referral_code: myReferralCode,

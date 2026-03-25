@@ -63,8 +63,13 @@ function showApp() {
 
 // Auth
 els.sendOtpBtn.onclick = async () => {
+  const phone = els.phoneNumber.value.trim();
+  if (!phone || phone.length < 10) {
+    setStatus(els.authStatus, 'Error: Please enter a valid 10-digit phone number');
+    return;
+  }
   try {
-    await api('/auth/send-otp', 'POST', { phoneNumber: els.phoneNumber.value.trim() });
+    await api('/auth/send-otp', 'POST', { phoneNumber: phone });
     setStatus(els.authStatus, 'OTP sent');
   } catch (e) {
     setStatus(els.authStatus, `Error: ${e.message}`);

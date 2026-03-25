@@ -9,7 +9,12 @@ const TRON_CONFIG = {
   eventServer: config.tron.eventServer
 };
 
-const tronWeb = new TronWeb(TRON_CONFIG);
+// For TronWeb v6+, we use the options object constructor
+const tronWeb = new TronWeb({
+  fullNode: config.tron.fullNode,
+  solidityNode: config.tron.solidityNode,
+  eventServer: config.tron.eventServer
+});
 
 export class TronService {
   private static instance: TronService;

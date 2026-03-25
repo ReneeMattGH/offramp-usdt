@@ -56,14 +56,31 @@ export class WalletService {
   }
 
   async getBalance(userId: string) {
-    const { data, error } = await supabase
-      .from('ledger_accounts')
-      .select('available_balance, locked_balance')
-      .eq('user_id', userId)
-      .maybeSingle();
+    try {
+      // Use RPC for calculated balance (more accurate real-time data)
+      const { data, error } = await supabase.rpc('get_calculated_balance', { p_user_id: userId });
+      
+      if (error) {
+        // Fallback to simple select if RPC fails or doesn't exist yet
+        const { data: cached, error: selectError } = await supabase
+          .from('ledger_accounts')
+          .select('available_balance, locked_balance')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (selectError) throw selectError;
+        return cached || { available_balance: 0, locked_balance: 0 };
+      }
 
-    if (error) throw error;
-    return data || { available_balance: 0, locked_balance: 0 };
+      return {
+        available_balance: data.calculated_available,
+        locked_balance: data.calculated_locked,
+        is_consistent: data.is_consistent
+      };
+    } catch (err: any) {
+      console.error('[WALLET_SERVICE] Balance fetch failed:', err.message);
+      return { available_balance: 0, locked_balance: 0 };
+    }
   }
 
   async getWallet(type: string) {

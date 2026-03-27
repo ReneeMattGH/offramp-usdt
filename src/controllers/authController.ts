@@ -34,14 +34,17 @@ export class AuthController extends BaseController {
         return this.clientError(res, 'Invalid phone number format');
       }
 
-      await authService.sendOTP(parsed.data.phoneNumber);
-      return this.ok(res, { 
-        success: true,
-        message: 'OTP sent successfully' 
-      });
+      const sent = await authService.sendOTP(parsed.data.phoneNumber);
+      if (!sent) {
+        return this.fail(res, 'Failed to send OTP');
+      }
+      return this.ok(res, { success: true, message: 'OTP sent successfully' });
     } catch (error: any) {
-      console.error('[AUTH_CONTROLLER] Send OTP Error:', error.message);
-      return this.fail(res, error.message);
+      if (error?.message === 'RESEND_COOLDOWN') {
+        return this.clientError(res, 'Please wait 30 seconds before resending OTP');
+      }
+      console.error('[AUTH_CONTROLLER] Send OTP Error:', error?.message || String(error));
+      return this.fail(res, error?.message || 'Failed to send OTP');
     }
   }
 

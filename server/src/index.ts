@@ -85,6 +85,7 @@ adminRouter.post('/deposits/:txHash/approve', adminAuth, adminController.approve
 adminRouter.post('/manual-credit', adminAuth, adminController.manualCredit.bind(adminController));
 adminRouter.get('/orders', adminAuth, adminController.getOrders.bind(adminController));
 adminRouter.post('/orders/:id/status', adminAuth, adminController.updateOrderStatus.bind(adminController));
+adminRouter.post('/settings/rate', adminAuth, adminController.updateUSDTSpread.bind(adminController));
 adminRouter.get('/users', adminAuth, adminController.getUsers.bind(adminController));
 adminRouter.post('/users/:id/freeze', adminAuth, adminController.freezeUser.bind(adminController));
 adminRouter.get('/audit', adminAuth, adminController.getAuditLogs.bind(adminController));

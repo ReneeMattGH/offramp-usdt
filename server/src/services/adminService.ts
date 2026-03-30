@@ -5,6 +5,8 @@ import config from '../config/index.js';
 import tronService from './tronService.js';
 
 import ledgerService from './ledgerService.js';
+import configService from './configService.js';
+import { v4 as uuidv4 } from 'uuid';
 import walletService from './walletService.js';
 import { decrypt } from '../utils/crypto.js';
 
@@ -204,19 +206,34 @@ export class AdminService {
     const { data: order } = await supabase.from('exchange_orders').select('*').eq('id', orderId).single();
     if (!order) throw new Error('Order not found');
 
-    if (status === 'approved') {
+    const normalizedStatus = status.toUpperCase();
+
+    if (normalizedStatus === 'APPROVED') {
       await supabase.from('exchange_orders').update({ status: 'APPROVED', updated_at: new Date().toISOString() }).eq('id', orderId);
       await supabase.from('payout_orders').update({ status: 'APPROVED' }).eq('id', orderId);
-    } else if (status === 'success') {
-      await supabase.from('exchange_orders').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', orderId);
+    } else if (normalizedStatus === 'SUCCESS') {
+      await supabase.from('exchange_orders').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', orderId);
+      await supabase.from('payout_orders').update({ status: 'COMPLETED' }).eq('id', orderId);
       await ledgerService.finalizePayout(order.user_id, order.usdt_amount, orderId);
-    } else if (status === 'failed' || status === 'refunded') {
-      await supabase.from('exchange_orders').update({ status: 'failed', failure_reason: note || 'Admin marked as failed' }).eq('id', orderId);
+    } else if (normalizedStatus === 'FAILED' || normalizedStatus === 'REFUNDED') {
+      await supabase.from('exchange_orders').update({ status: 'FAILED', failure_reason: note || 'Admin marked as failed' }).eq('id', orderId);
+      await supabase.from('payout_orders').update({ status: 'FAILED' }).eq('id', orderId);
       await ledgerService.failPayout(order.user_id, order.usdt_amount, orderId);
+    } else if (normalizedStatus === 'PROCESSING') {
+      await supabase.from('exchange_orders').update({ status: 'PROCESSING' }).eq('id', orderId);
+      await supabase.from('payout_orders').update({ status: 'PROCESSING' }).eq('id', orderId);
     }
 
-    await this.logAction(adminId, 'UPDATE_ORDER', 'order', orderId, { status, note });
+    await this.logAction(adminId, 'UPDATE_ORDER', 'order', orderId, { status: normalizedStatus, note });
     return { success: true };
+  }
+
+  async updateSystemSpread(spreadPercent: number, adminId: string) {
+    const result = await configService.update({ exchange_spread_percent: spreadPercent });
+    if (!result.success) throw new Error(result.error || 'Failed to update spread');
+    
+    await this.logAction(adminId, 'UPDATE_SPREAD', 'system', '1', { spreadPercent });
+    return { success: true, config: result.config };
   }
 
   async getUsers() {

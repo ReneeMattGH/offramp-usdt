@@ -9,8 +9,12 @@ const loginSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: z.string(),
+  status: z.enum(['PENDING', 'PROCESSING', 'APPROVED', 'SUCCESS', 'FAILED', 'REFUNDED']),
   note: z.string().optional(),
+});
+
+const updateRateSchema = z.object({
+  spreadPercent: z.number().min(0).max(100),
 });
 
 const manualCreditSchema = z.object({
@@ -135,6 +139,20 @@ export class AdminController extends BaseController {
       if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
       const { status, note } = parsed.data;
       const result = await adminService.updateOrderStatus(id, status, note || '', req.admin.id);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error);
+    }
+  }
+
+  async updateUSDTSpread(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const parsed = updateRateSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+      
+      const { spreadPercent } = parsed.data;
+      const result = await adminService.updateSystemSpread(spreadPercent, req.admin.id);
       return this.ok(res, result);
     } catch (error: any) {
       return this.fail(res, error);

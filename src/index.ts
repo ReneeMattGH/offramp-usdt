@@ -114,6 +114,7 @@ adminRouter.get('/payouts', adminAuth, payoutController.adminListAll.bind(payout
 adminRouter.post('/payouts/:id/approve', adminAuth, payoutController.adminProcess.bind(payoutController));
 adminRouter.post('/payouts/:id/reject', adminAuth, payoutController.adminReject.bind(payoutController));
 
+adminRouter.post('/settings/rate', adminAuth, adminController.updateUSDTSpread.bind(adminController));
 adminRouter.get('/audit', adminAuth, adminController.getAuditLogs.bind(adminController));
 
 apiRouter.use('/admin', adminRouter);

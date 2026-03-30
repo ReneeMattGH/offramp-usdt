@@ -7,7 +7,6 @@ import config from './config/index.js';
 import authController from './controllers/authController.js';
 import walletController from './controllers/walletController.js';
 import exchangeController from './controllers/exchangeController.js';
-import bankAccountController from './controllers/bankAccountController.js';
 import withdrawalController from './controllers/withdrawalController.js';
 import payoutController from './controllers/payoutController.js';
 import adminController from './controllers/adminController.js';
@@ -63,13 +62,6 @@ exchangeRouter.post('/create-order', authenticate, exchangeController.createOrde
 
 apiRouter.use('/exchange', exchangeRouter);
 
-// Bank Account Routes
-const bankRouter = express.Router();
-bankRouter.post('/', authenticate, bankAccountController.addAccount.bind(bankAccountController));
-bankRouter.get('/my', authenticate, bankAccountController.listMyAccounts.bind(bankAccountController));
-
-apiRouter.use('/bank', bankRouter);
-
 // Withdrawal Routes (USDT to Wallet)
 const withdrawalRouter = express.Router();
 withdrawalRouter.post('/', authenticate, withdrawalController.requestWithdrawal.bind(withdrawalController));
@@ -111,11 +103,6 @@ adminRouter.get('/orders', adminAuth, adminController.getOrders.bind(adminContro
 adminRouter.post('/orders/:id/status', adminAuth, adminController.updateOrderStatus.bind(adminController));
 adminRouter.get('/users', adminAuth, adminController.getUsers.bind(adminController));
 adminRouter.post('/users/:id/freeze', adminAuth, adminController.freezeUser.bind(adminController));
-
-// Admin Bank APIs
-adminRouter.get('/bank-accounts', adminAuth, bankAccountController.adminListAllAccounts.bind(bankAccountController));
-adminRouter.patch('/bank-accounts/:id', adminAuth, bankAccountController.adminUpdateAccount.bind(bankAccountController));
-adminRouter.delete('/bank-accounts/:id', adminAuth, bankAccountController.adminDeleteAccount.bind(bankAccountController));
 
 // Admin Withdrawal APIs (USDT to Wallet)
 adminRouter.get('/withdrawals', adminAuth, withdrawalController.adminListAll.bind(withdrawalController));

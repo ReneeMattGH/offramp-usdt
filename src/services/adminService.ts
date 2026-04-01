@@ -64,6 +64,71 @@ export class AdminService {
     }
   }
 
+  async getAdminMe(adminId: string) {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id, username, role')
+      .eq('id', adminId)
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateAdminCredentials(adminId: string, username?: string, password?: string) {
+    const updates: any = {};
+    if (username) updates.username = username;
+    if (password) {
+      updates.password_hash = await bcrypt.hash(password, 10);
+    }
+    
+    if (Object.keys(updates).length === 0) return { success: false, message: 'No updates provided' };
+
+    const { data, error } = await supabase
+      .from('admins')
+      .update(updates)
+      .eq('id', adminId)
+      .select('id, username, role')
+      .single();
+
+    if (error) throw error;
+    await this.logAction(adminId, 'UPDATE_CREDENTIALS', 'admin', adminId, { updatedFields: Object.keys(updates) });
+    return { success: true, admin: data };
+  }
+
+  async createAdmin(username: string, password: string, role: string, requesterAdminId: string) {
+    // Check requester role
+    const { data: requester } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', requesterAdminId)
+      .single();
+    
+    if (!requester || requester.role !== 'superadmin') {
+      throw new Error('Unauthorized: Only super admins can create new admins');
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const { data, error } = await supabase
+      .from('admins')
+      .insert({
+        id: uuidv4(),
+        username,
+        password_hash,
+        role: role || 'admin',
+        created_at: new Date().toISOString()
+      })
+      .select('id, username, role')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') throw new Error('Username already exists');
+      throw error;
+    }
+
+    await this.logAction(requesterAdminId, 'CREATE_ADMIN', 'admin', data.id, { username, role });
+    return { success: true, admin: data };
+  }
+
   async getDashboardData() {
     const treasuryAddress = config.treasuryAddress;
     const treasuryBalance = await tronService.getTreasuryBalance(treasuryAddress);

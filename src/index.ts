@@ -101,6 +101,9 @@ apiRouter.use('/referral', referralRouter);
 // Admin Routes
 const adminRouter = express.Router();
 adminRouter.post('/login', adminController.login.bind(adminController));
+adminRouter.get('/me', adminAuth, adminController.me.bind(adminController));
+adminRouter.post('/update-credentials', adminAuth, adminController.updateMyCredentials.bind(adminController));
+adminRouter.post('/add-admin', adminAuth, adminController.addAdmin.bind(adminController));
 adminRouter.get('/dashboard', adminAuth, adminController.getDashboard.bind(adminController));
 adminRouter.get('/kyc', adminAuth, adminController.getKycList.bind(adminController));
 adminRouter.post('/kyc/:id/approve', adminAuth, adminController.approveKyc.bind(adminController));

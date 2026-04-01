@@ -27,6 +27,17 @@ const freezeSchema = z.object({
   frozen: z.boolean(),
 });
 
+const updateAdminSchema = z.object({
+  username: z.string().optional(),
+  password: z.string().min(6).optional(),
+});
+
+const addAdminSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  role: z.enum(['superadmin', 'admin', 'staff']).default('admin'),
+});
+
 export interface AdminRequest extends Request {
   admin?: {
     id: string;
@@ -44,7 +55,45 @@ export class AdminController extends BaseController {
       const result = await adminService.login(username, password);
       return this.ok(res, result);
     } catch (error: any) {
-      return this.fail(res, error);
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async me(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const data = await adminService.getAdminMe(req.admin.id);
+      return this.ok(res, data);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async updateMyCredentials(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const parsed = updateAdminSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+      
+      const { username, password } = parsed.data;
+      const result = await adminService.updateAdminCredentials(req.admin.id, username, password);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async addAdmin(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const parsed = addAdminSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+
+      const { username, password, role } = parsed.data;
+      const result = await adminService.createAdmin(username, password, role, req.admin.id);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
     }
   }
 

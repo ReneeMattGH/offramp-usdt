@@ -1,0 +1,66 @@
+{
+  "api_name": "USDT Rate Management API",
+  "version": "1.0.0",
+  "endpoints": [
+    {
+      "name": "Fetch Live Rate",
+      "method": "GET",
+      "path": "/api/exchange/rate",
+      "authentication": "None",
+      "description": "Fetches the current real-time USDT to INR exchange rate with the system spread applied. This is the rate users will see when making exchange orders.",
+      "response": {
+        "success": {
+          "code": 200,
+          "body": {
+            "rate": 91.08
+          }
+        },
+        "error": {
+          "code": 500,
+          "body": {
+            "message": "Error fetching rate"
+          }
+        }
+      }
+    },
+    {
+      "name": "Update Exchange Spread",
+      "method": "POST",
+      "path": "/api/admin/settings/rate",
+      "authentication": "Admin JTW Token (Bearer)",
+      "description": "Updates the percentage spread (e.g., 1.5 for 1.5%) applied to the live market rate. A spread of 0 means users get the exact market rate. A spread of 1% means users get market rate minus 1%.",
+      "request_body": {
+        "spreadPercent": 1.5
+      },
+      "response": {
+        "success": {
+          "code": 200,
+          "body": {
+            "success": true,
+            "config": {
+              "min_usdt_withdrawal": 20,
+              "usdt_withdrawal_fee": 5,
+              "daily_withdrawal_limit": 100000,
+              "exchange_spread_percent": 1.5,
+              "withdrawals_enabled": true,
+              "deposits_enabled": true,
+              "exchanges_enabled": true
+            }
+          }
+        },
+        "error": {
+          "code": 401,
+          "body": {
+            "message": "Unauthorized"
+          }
+        },
+        "validation_error": {
+          "code": 400,
+          "body": {
+            "message": "spreadPercent must be a number between 0 and 100"
+          }
+        }
+      }
+    }
+  ]
+}

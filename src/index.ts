@@ -12,6 +12,7 @@ import payoutController from './controllers/payoutController.js';
 import adminController from './controllers/adminController.js';
 import referralController from './controllers/referralController.js';
 import { kycController } from './controllers/kycController.js';
+import bankAccountController from './controllers/bankAccountController.js';
 import tronWorker from './workers/tronWorker.js';
 import payoutWorker from './workers/payoutWorker.js';
 import withdrawalWorker from './workers/withdrawalWorker.js';
@@ -82,6 +83,14 @@ kycRouter.post('/verify-kyc', authenticate, upload.single('aadhaar_image'), kycC
 kycRouter.get('/status', authenticate, kycController.getStatus.bind(kycController));
 
 apiRouter.use('/kyc', kycRouter);
+
+// Bank Account Routes
+const bankRouter = express.Router();
+bankRouter.get('/my', authenticate, bankAccountController.listMyAccounts.bind(bankAccountController));
+bankRouter.post('/', authenticate, bankAccountController.addAccount.bind(bankAccountController));
+bankRouter.delete('/:id', authenticate, bankAccountController.deleteAccount.bind(bankAccountController));
+
+apiRouter.use('/bank', bankRouter);
 
 // Referral Routes
 const referralRouter = express.Router();

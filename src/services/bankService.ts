@@ -5,13 +5,15 @@ export class BankService {
     account_number: string;
     ifsc_code: string;
     account_holder_name: string;
+    bank_name: string;
     is_primary?: boolean;
   }) {
     // If this is the first bank account, make it primary
     const { count } = await supabase
       .from('bank_accounts')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .is('deleted_at', null);
 
     const isPrimary = count === 0 ? true : (data.is_primary || false);
 
@@ -20,7 +22,8 @@ export class BankService {
       await supabase
         .from('bank_accounts')
         .update({ is_primary: false })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null);
     }
 
     const { data: account, error } = await supabase
@@ -30,6 +33,7 @@ export class BankService {
         account_number: data.account_number,
         ifsc_code: data.ifsc_code,
         account_holder_name: data.account_holder_name,
+        bank_name: data.bank_name,
         is_primary: isPrimary
       })
       .select()
@@ -44,7 +48,7 @@ export class BankService {
       .from('bank_accounts')
       .select('*')
       .eq('user_id', userId)
-      .eq('is_active', true)
+      .is('deleted_at', null)
       .order('is_primary', { ascending: false });
 
     if (error) throw error;
@@ -83,12 +87,18 @@ export class BankService {
     return account;
   }
 
-  async deleteBankAccount(accountId: string) {
-    // Soft delete by setting is_active to false
-    const { error } = await supabase
+  async deleteBankAccount(accountId: string, userId?: string) {
+    // Soft delete by setting deleted_at timestamp
+    // Supabase builder is immutable — chain conditionally by building the full expression
+    let baseQuery = supabase
       .from('bank_accounts')
-      .update({ is_active: false })
-      .eq('id', accountId);
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', accountId)
+      .is('deleted_at', null);
+
+    const { error } = userId
+      ? await baseQuery.eq('user_id', userId)
+      : await baseQuery;
 
     if (error) throw error;
     return true;

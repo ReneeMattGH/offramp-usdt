@@ -166,10 +166,10 @@ export class AuthService {
   }
 
   async signup(data: {
-    accountHolderName: string;
+    accountHolderName?: string;
     phoneNumber: string;
-    accountNumber: string;
-    ifscCode: string;
+    accountNumber?: string;
+    ifscCode?: string;
     otp: string;
     referralCode?: string;
   }) {
@@ -194,10 +194,10 @@ export class AuthService {
       .from('users')
       .insert({
         id: userId,
-        account_holder_name: data.accountHolderName,
+        account_holder_name: data.accountHolderName || 'User',
         phone_number: normalizedPhone,
-        account_number: data.accountNumber,
-        ifsc_code: data.ifscCode,
+        account_number: data.accountNumber || '',
+        ifsc_code: data.ifscCode || '',
         referral_code: myReferralCode,
         kyc_status: 'not_submitted',
         email: `${normalizedPhone}@internal.local`

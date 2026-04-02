@@ -91,6 +91,16 @@ export class WalletService {
       .maybeSingle();
     
     if (error) throw error;
+
+    // Fallback to config for treasury address if not in DB
+    if (!data && type === 'treasury' && config.treasuryAddress) {
+      return {
+        address: config.treasuryAddress,
+        type: 'treasury',
+        is_active: true
+      };
+    }
+
     return data;
   }
 

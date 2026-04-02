@@ -85,14 +85,36 @@ export class WithdrawalWorker {
           .eq('id', withdrawal.id);
         console.log(`[WITHDRAWAL_WORKER] Withdrawal ${withdrawal.id} broadcasted: ${txHash}`);
       } else {
-        await supabase
-          .from('usdt_withdrawals')
-          .update({ 
-            status: 'failed', 
-            failure_reason: 'Broadcast failed', 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', withdrawal.id);
+        // Retry logic or fail after N attempts
+        const retryCount = (withdrawal.retry_count || 0) + 1;
+        if (retryCount >= 3) {
+          console.error(`[WITHDRAWAL_WORKER] Withdrawal ${withdrawal.id} failed after ${retryCount} retries. Refunding user.`);
+          
+          await supabase.rpc('fail_withdrawal', {
+            p_user_id: withdrawal.user_id,
+            p_amount: withdrawal.usdt_amount,
+            p_withdrawal_id: withdrawal.id
+          });
+
+          await supabase
+            .from('usdt_withdrawals')
+            .update({ 
+              status: 'failed', 
+              failure_reason: 'Broadcast failed after retries', 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', withdrawal.id);
+
+          wsService.sendToUser(withdrawal.user_id, 'WITHDRAWAL_FAILED', {
+            withdrawalId: withdrawal.id,
+            reason: 'Network error, funds refunded'
+          });
+        } else {
+          await supabase
+            .from('usdt_withdrawals')
+            .update({ retry_count: retryCount, updated_at: new Date().toISOString() })
+            .eq('id', withdrawal.id);
+        }
       }
     } catch (error: any) {
       console.error(`[WITHDRAWAL_WORKER] Execution failed for ${withdrawal.id}:`, error.message);

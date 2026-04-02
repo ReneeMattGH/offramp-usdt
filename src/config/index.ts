@@ -53,7 +53,7 @@ export const config = {
     fullNode: validatedConfig.TRON_NETWORK === 'testnet' ? 'https://nile.trongrid.io' : (validatedConfig.TRON_FULL_NODE || 'https://api.trongrid.io'),
     solidityNode: validatedConfig.TRON_NETWORK === 'testnet' ? 'https://nile.trongrid.io' : (validatedConfig.TRON_SOLIDITY_NODE || 'https://api.trongrid.io'),
     eventServer: validatedConfig.TRON_NETWORK === 'testnet' ? 'https://nile.trongrid.io' : (validatedConfig.TRON_EVENT_SERVER || 'https://api.trongrid.io'),
-    usdtContract: validatedConfig.TRON_NETWORK === 'testnet' ? 'TXLAQ63Xg1qMAr3zCPwrCcS9R8x5QJ2GvX' : (validatedConfig.USDT_CONTRACT_ADDRESS || 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'),
+    usdtContract: validatedConfig.USDT_CONTRACT_ADDRESS || (validatedConfig.TRON_NETWORK === 'testnet' ? 'TXLAQ63Xg1qMAr3zCPwrCcS9R8x5QJ2GvX' : 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'),
     proApiKey: validatedConfig.TRON_PRO_API_KEY,
   },
   twilio: {

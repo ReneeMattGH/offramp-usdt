@@ -9,8 +9,39 @@ import wsService from '../services/wsService.js';
 const TRON_CONFIG = {
   fullNode: config.tron.fullNode,
   solidityNode: config.tron.solidityNode,
-  eventServer: config.tron.eventServer
+  eventServer: config.tron.eventServer,
+  headers: config.tron.proApiKey ? { 'TRON-PRO-API-KEY': config.tron.proApiKey } : {}
 };
+
+const USDT_ABI = [
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "_to", "type": "address" },
+      { "name": "_value", "type": "uint256" }
+    ],
+    "name": "transfer",
+    "outputs": [{ "name": "success", "type": "bool" }],
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "from", "type": "address" },
+      { "indexed": true, "name": "to", "type": "address" },
+      { "indexed": false, "name": "value", "type": "uint256" }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  }
+];
 
 const tronWeb = new TronWeb(TRON_CONFIG);
 
@@ -41,37 +72,59 @@ export class TronWorker {
     try {
       console.log(`[TRON_WORKER] Subscribing to USDT Transfer events for contract: ${config.tron.usdtContract}`);
       
-      // Listen to Transfer events on the USDT contract
-      // Note: This requires a TRON node with event server enabled
-      tronWeb.contract().at(config.tron.usdtContract).then((contract: any) => {
+      // 1. WebSocket / Watcher (Real-time)
+      tronWeb.contract(USDT_ABI, config.tron.usdtContract).then((contract: any) => {
         contract.Transfer().watch(async (err: any, event: any) => {
           if (err) {
             console.error('[TRON_WORKER] Event listener error:', err);
             return;
           }
-
           if (event && event.result) {
-            const { to, value } = event.result;
-            const toAddress = tronWeb.address.fromHex(to);
-            const amount = Number(value) / 1000000;
-
-            // Check if this 'to' address is one of our active deposit addresses
-            const { data: addr, error } = await supabase
-              .from('deposit_addresses')
-              .select('*')
-              .eq('tron_address', toAddress)
-              .eq('is_used', false)
-              .maybeSingle();
-
-            if (addr) {
-              console.log(`[TRON_WORKER] Real-time Transfer detected: ${amount} USDT to ${toAddress}`);
-              await this.processAddress(addr);
-            }
+            await this.handleEvent(event.result, event.transaction_id);
           }
         });
       });
+
+      // 2. Event Polling (Fallback for reliability)
+      setInterval(() => this.pollEvents(), 30000);
+
     } catch (err) {
       console.error('[TRON_WORKER] Failed to start event listener:', err);
+    }
+  }
+
+  private async pollEvents() {
+    try {
+      // Use Trongrid Event API
+      const response = await fetch(`${config.tron.eventServer}/v1/contracts/${config.tron.usdtContract}/events?event_name=Transfer&limit=50&only_confirmed=true`);
+      const json: any = await response.json();
+      
+      if (json.success && json.data) {
+        for (const event of json.data) {
+          await this.handleEvent(event.result, event.transaction_id);
+        }
+      }
+    } catch (err) {
+      console.error('[TRON_WORKER] Polling error:', err);
+    }
+  }
+
+  private async handleEvent(result: any, txHash: string) {
+    const { to, value } = result;
+    // Handle both hex and base58 formats
+    const toAddress = to.startsWith('41') ? tronWeb.address.fromHex(to) : to;
+    const amount = Number(value) / 1000000;
+
+    const { data: addr, error } = await supabase
+      .from('deposit_addresses')
+      .select('*')
+      .eq('tron_address', toAddress)
+      .eq('is_used', false)
+      .maybeSingle();
+
+    if (addr) {
+      console.log(`[TRON_WORKER] Event-based Transfer detected: ${amount} USDT to ${toAddress}`);
+      await this.processAddress(addr);
     }
   }
 

@@ -6,15 +6,42 @@ import { decrypt } from '../utils/crypto.js';
 const TRON_CONFIG = {
   fullNode: config.tron.fullNode,
   solidityNode: config.tron.solidityNode,
-  eventServer: config.tron.eventServer
+  eventServer: config.tron.eventServer,
+  headers: config.tron.proApiKey ? { 'TRON-PRO-API-KEY': config.tron.proApiKey } : {}
 };
 
+const USDT_ABI = [
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "_to", "type": "address" },
+      { "name": "_value", "type": "uint256" }
+    ],
+    "name": "transfer",
+    "outputs": [{ "name": "success", "type": "bool" }],
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "from", "type": "address" },
+      { "indexed": true, "name": "to", "type": "address" },
+      { "indexed": false, "name": "value", "type": "uint256" }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  }
+];
+
 // For TronWeb v6+, we use the options object constructor
-const tronWeb = new TronWeb({
-  fullNode: config.tron.fullNode,
-  solidityNode: config.tron.solidityNode,
-  eventServer: config.tron.eventServer
-});
+const tronWeb = new TronWeb(TRON_CONFIG);
 
 export class TronService {
   private static instance: TronService;
@@ -47,7 +74,7 @@ export class TronService {
       if (!privateKey) throw new Error('System private key not found');
 
       tronWeb.setPrivateKey(privateKey);
-      const contract = await tronWeb.contract().at(config.tron.usdtContract);
+      const contract = await tronWeb.contract(USDT_ABI, config.tron.usdtContract);
       
       const amountInUnits = Math.floor(amount * 1000000);
       const txHash = await contract.transfer(toAddress, amountInUnits).send();

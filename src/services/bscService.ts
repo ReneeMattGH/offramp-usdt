@@ -33,23 +33,45 @@ export class BSCService {
   public async startListening() {
     console.log('[BSC_SERVICE] Starting BSC USDT listener...');
     
+    // Use polling for BSC as standard provider.on might be unstable without WebSocket
+    setInterval(() => this.pollEvents(), 30000);
+    
     this.contract.on("Transfer", async (from, to, value, event) => {
-      const amount = Number(ethers.formatUnits(value, 18)); // BSC USDT uses 18 decimals
-      
-      // Check if this 'to' address matches any of our users' BSC deposit addresses
-      const { data: addr, error } = await supabase
-        .from('deposit_addresses')
-        .select('*')
-        .eq('network', 'bsc')
-        .eq('address', to.toLowerCase())
-        .eq('is_used', false)
-        .maybeSingle();
-
-      if (addr) {
-        console.log(`[BSC_SERVICE] Deposit detected: ${amount} USDT to ${to}`);
-        await this.processBSCDeposit(addr, amount, event.transactionHash);
-      }
+      await this.handleTransfer(from, to, value, event.transactionHash);
     });
+  }
+
+  private async pollEvents() {
+    try {
+      const currentBlock = await this.provider.getBlockNumber();
+      const events = await this.contract.queryFilter("Transfer", currentBlock - 100, currentBlock);
+      for (const event of events) {
+        if ('args' in event && event.args) {
+          const [from, to, value] = event.args;
+          await this.handleTransfer(from, to, value, event.transactionHash);
+        }
+      }
+    } catch (err) {
+      console.error('[BSC_SERVICE] Polling error:', err);
+    }
+  }
+
+  private async handleTransfer(from: string, to: string, value: any, txHash: string) {
+    const amount = Number(ethers.formatUnits(value, 18)); // BSC USDT uses 18 decimals
+    
+    // Check if this 'to' address matches any of our users' BSC deposit addresses
+    const { data: addr, error } = await supabase
+      .from('deposit_addresses')
+      .select('*')
+      .eq('network', 'bsc')
+      .eq('tron_address', to.toLowerCase()) // Reusing tron_address column for BSC for simplicity
+      .eq('is_used', false)
+      .maybeSingle();
+
+    if (addr) {
+      console.log(`[BSC_SERVICE] Deposit detected: ${amount} USDT to ${to}`);
+      await this.processBSCDeposit(addr, amount, txHash);
+    }
   }
 
   private async processBSCDeposit(addr: any, amount: number, txHash: string) {

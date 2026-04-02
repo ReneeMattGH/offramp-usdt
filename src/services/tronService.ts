@@ -37,10 +37,14 @@ export class TronService {
         .eq('type', 'system')
         .single();
 
-      if (error || !wallet) throw new Error('System wallet not found');
+      let privateKey: string | null = null;
+      if (wallet) {
+        privateKey = decrypt(wallet.private_key_encrypted);
+      } else if (config.systemPrivateKey) {
+        privateKey = config.systemPrivateKey;
+      }
 
-      const privateKey = decrypt(wallet.private_key_encrypted);
-      if (!privateKey) throw new Error('Failed to decrypt system private key');
+      if (!privateKey) throw new Error('System private key not found');
 
       tronWeb.setPrivateKey(privateKey);
       const contract = await tronWeb.contract().at(config.tron.usdtContract);
@@ -51,6 +55,33 @@ export class TronService {
       return txHash;
     } catch (error: any) {
       console.error('[TRON_SERVICE] Send USDT failed:', error.message);
+      return null;
+    }
+  }
+
+  async sendTRX(toAddress: string, amount: number): Promise<string | null> {
+    try {
+      const { data: wallet, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('type', 'system')
+        .single();
+
+      let privateKey: string | null = null;
+      if (wallet) {
+        privateKey = decrypt(wallet.private_key_encrypted);
+      } else if (config.systemPrivateKey) {
+        privateKey = config.systemPrivateKey;
+      }
+
+      if (!privateKey) throw new Error('System private key not found');
+
+      tronWeb.setPrivateKey(privateKey);
+      const amountInSun = Number(tronWeb.toSun(amount));
+      const tx = await tronWeb.trx.sendTransaction(toAddress, amountInSun);
+      return (tx as any).txid || (tx as any).transaction?.txID;
+    } catch (error: any) {
+      console.error('[TRON_SERVICE] Send TRX failed:', error.message);
       return null;
     }
   }

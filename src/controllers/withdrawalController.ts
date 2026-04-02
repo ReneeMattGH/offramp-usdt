@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { BaseController } from './baseController.js';
 import withdrawalService from '../services/withdrawalService.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
+import { TronWeb } from 'tronweb';
 
 export class WithdrawalController extends BaseController {
   async requestWithdrawal(req: AuthRequest, res: Response) {
@@ -12,6 +13,11 @@ export class WithdrawalController extends BaseController {
       
       if (!destination_address || !usdt_amount) {
         return this.clientError(res, 'Missing destination_address or usdt_amount');
+      }
+
+      // Validate Tron address
+      if (!TronWeb.isAddress(destination_address)) {
+        return this.clientError(res, 'Invalid Tron address');
       }
 
       const withdrawal = await withdrawalService.requestUSDTWithdrawal(req.user.id, {

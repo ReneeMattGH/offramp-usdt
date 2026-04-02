@@ -220,8 +220,8 @@ const startServer = async () => {
     await configService.loadConfig();
     console.log('✅ Configuration loaded from database');
 
-    // 1. Start Persistent Workers (Only if not in serverless environment)
-    if (process.env.RUN_WORKERS === 'true' || config.nodeEnv === 'production') {
+    // 1. Start Persistent Workers (Start by default unless explicitly disabled)
+    if (process.env.SKIP_WORKERS !== 'true') {
       tronWorker.start();
       payoutWorker.start();
       withdrawalWorker.start();

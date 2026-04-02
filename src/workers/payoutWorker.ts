@@ -35,50 +35,54 @@ export class PayoutWorker {
     this.isProcessing = true;
 
     try {
-      // Find orders that are approved but not yet processed
-      const { data: order, error } = await supabase
+      // Find orders that are approved
+      const { data: orders, error } = await supabase
         .from('payout_orders')
         .select('*, users(*), bank_accounts(*)')
         .eq('status', 'APPROVED')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      if (!order) return;
+      if (!orders || orders.length === 0) return;
 
-      console.log(`[PAYOUT_WORKER] Processing payout order: ${order.id}`);
+      for (const order of orders) {
+        console.log(`[PAYOUT_WORKER] Processing payout order: ${order.id}`);
 
-      // Mark as processing
-      await supabase
-        .from('payout_orders')
-        .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
-        .eq('id', order.id);
-
-      const result = await this.provider.initiatePayout(order, order.users, order.bank_accounts);
-      
-      if (result.status === 'SUCCESS') {
+        // Mark as processing
         await supabase
           .from('payout_orders')
-          .update({ 
-            status: 'COMPLETED', 
-            gateway_ref_id: (result as any).utr || result.payout_id,
-            updated_at: new Date().toISOString()
-          })
+          .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
           .eq('id', order.id);
-        console.log(`[PAYOUT_WORKER] Payout order ${order.id} completed successfully`);
-      } else if (result.status === 'FAILED') {
-        await supabase
-          .from('payout_orders')
-          .update({ 
-            status: 'FAILED', 
-            failure_reason: result.reason,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', order.id);
-        console.error(`[PAYOUT_WORKER] Payout order ${order.id} failed: ${result.reason}`);
+
+        try {
+          const result = await this.provider.initiatePayout(order, order.users, order.bank_accounts);
+          
+          if (result.status === 'SUCCESS') {
+            await supabase
+              .from('payout_orders')
+              .update({ 
+                status: 'COMPLETED', 
+                gateway_ref_id: (result as any).utr || result.payout_id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', order.id);
+            console.log(`[PAYOUT_WORKER] Payout order ${order.id} completed successfully`);
+          } else if (result.status === 'FAILED') {
+            await supabase
+              .from('payout_orders')
+              .update({ 
+                status: 'FAILED', 
+                failure_reason: result.reason,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', order.id);
+            console.error(`[PAYOUT_WORKER] Payout order ${order.id} failed: ${result.reason}`);
+          }
+        } catch (innerErr: any) {
+          console.error(`[PAYOUT_WORKER] Inner error for order ${order.id}:`, innerErr.message);
+          // Mark back to approved or failed if it's a persistent error
+        }
       }
-      // If status is PROCESSING, we wait for webhook or manual check
     } catch (err) {
       console.error('[PAYOUT_WORKER] Error in queue processor:', err);
     } finally {

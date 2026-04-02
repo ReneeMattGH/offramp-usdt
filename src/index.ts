@@ -237,7 +237,7 @@ const startServer = async () => {
     }
 
     // 2. Start Express Server
-    server.listen(config.port, () => {
+    server.listen(config.port, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${config.port} in ${config.nodeEnv} mode`);
     });
   } catch (error) {

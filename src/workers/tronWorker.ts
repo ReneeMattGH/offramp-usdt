@@ -73,20 +73,19 @@ export class TronWorker {
       console.log(`[TRON_WORKER] Subscribing to USDT Transfer events for contract: ${config.tron.usdtContract}`);
       
       // 1. WebSocket / Watcher (Real-time)
-      tronWeb.contract(USDT_ABI, config.tron.usdtContract).then((contract: any) => {
-        contract.Transfer().watch(async (err: any, event: any) => {
-          if (err) {
-            console.error('[TRON_WORKER] Event listener error:', err);
-            return;
-          }
-          if (event && event.result) {
-            await this.handleEvent(event.result, event.transaction_id);
-          }
-        });
+      const contract = await tronWeb.contract(USDT_ABI, config.tron.usdtContract);
+      contract.Transfer().watch(async (err: any, event: any) => {
+        if (err) {
+          console.error('[TRON_WORKER] Event listener error:', err);
+          return;
+        }
+        if (event && event.result) {
+          await this.handleEvent(event.result, event.transaction_id);
+        }
       });
 
       // 2. Event Polling (Fallback for reliability)
-      setInterval(() => this.pollEvents(), 30000);
+      setInterval(() => this.pollEvents(), 60000); // Increase to 60s for better rate limit handling
 
     } catch (err) {
       console.error('[TRON_WORKER] Failed to start event listener:', err);

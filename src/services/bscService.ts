@@ -33,8 +33,8 @@ export class BSCService {
   public async startListening() {
     console.log('[BSC_SERVICE] Starting BSC USDT listener...');
     
-    // Use polling for BSC as standard provider.on might be unstable without WebSocket
-    setInterval(() => this.pollEvents(), 30000);
+    // Polling interval increased to 60s to avoid rate limits
+    setInterval(() => this.pollEvents(), 60000);
     
     this.contract.on("Transfer", async (from, to, value, event) => {
       await this.handleTransfer(from, to, value, event.transactionHash);
@@ -44,15 +44,20 @@ export class BSCService {
   private async pollEvents() {
     try {
       const currentBlock = await this.provider.getBlockNumber();
-      const events = await this.contract.queryFilter("Transfer", currentBlock - 100, currentBlock);
+      // Only check last 50 blocks instead of 100 to reduce data size and potential errors
+      const events = await this.contract.queryFilter("Transfer", currentBlock - 50, currentBlock);
       for (const event of events) {
         if ('args' in event && event.args) {
           const [from, to, value] = event.args;
           await this.handleTransfer(from, to, value, event.transactionHash);
         }
       }
-    } catch (err) {
-      console.error('[BSC_SERVICE] Polling error:', err);
+    } catch (err: any) {
+      if (err.message?.includes('rate limit')) {
+        console.warn('[BSC_SERVICE] Polling rate limit reached. Skipping this cycle.');
+      } else {
+        console.error('[BSC_SERVICE] Polling error:', err.message || err);
+      }
     }
   }
 

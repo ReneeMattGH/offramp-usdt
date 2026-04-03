@@ -17,6 +17,8 @@ export class BSCService {
   private static instance: BSCService;
   private provider: ethers.JsonRpcProvider;
   private contract: ethers.Contract;
+  private isProcessing: boolean = false;
+  private lastCheckedBlock: number = 0;
 
   private constructor() {
     this.provider = new ethers.JsonRpcProvider(BSC_RPC);
@@ -33,44 +35,68 @@ export class BSCService {
   public async startListening() {
     console.log('[BSC_SERVICE] Starting BSC USDT listener...');
     
-    // Polling interval increased to 60s to avoid rate limits
-    setInterval(() => this.pollEvents(), 60000);
-    
-    this.contract.on("Transfer", async (from, to, value, event) => {
-      await this.handleTransfer(from, to, value, event.transactionHash);
-    });
+    // Initial block to start from
+    try {
+      this.lastCheckedBlock = await this.provider.getBlockNumber();
+    } catch (e) {
+      this.lastCheckedBlock = 0;
+    }
+
+    // Significant increase in interval to 2 minutes to prevent egress and RPC limits
+    setInterval(() => this.pollEvents(), 120000);
   }
 
   private async pollEvents() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
     try {
       const currentBlock = await this.provider.getBlockNumber();
-      // Only check last 50 blocks instead of 100 to reduce data size and potential errors
-      const events = await this.contract.queryFilter("Transfer", currentBlock - 50, currentBlock);
+      
+      // If we haven't set lastCheckedBlock, start from current - 10
+      if (this.lastCheckedBlock === 0) {
+        this.lastCheckedBlock = currentBlock - 10;
+      }
+
+      // Limit the block range to avoid large data sets
+      const fromBlock = Math.max(this.lastCheckedBlock + 1, currentBlock - 200);
+      
+      if (fromBlock > currentBlock) return;
+
+      console.log(`[BSC_SERVICE] Polling blocks ${fromBlock} to ${currentBlock}`);
+      const events = await this.contract.queryFilter("Transfer", fromBlock, currentBlock);
+      
       for (const event of events) {
         if ('args' in event && event.args) {
           const [from, to, value] = event.args;
           await this.handleTransfer(from, to, value, event.transactionHash);
         }
       }
+
+      this.lastCheckedBlock = currentBlock;
     } catch (err: any) {
-      if (err.message?.includes('rate limit')) {
-        console.warn('[BSC_SERVICE] Polling rate limit reached. Skipping this cycle.');
+      if (err.message?.includes('rate limit') || err.message?.includes('socket') || err.message?.includes('fetch failed')) {
+        console.warn('[BSC_SERVICE] Network or Rate Limit issue. Skipping cycle.');
       } else {
         console.error('[BSC_SERVICE] Polling error:', err.message || err);
       }
+    } finally {
+      this.isProcessing = false;
     }
   }
 
   private async handleTransfer(from: string, to: string, value: any, txHash: string) {
-    const amount = Number(ethers.formatUnits(value, 18)); // BSC USDT uses 18 decimals
+    const amount = Number(ethers.formatUnits(value, 18));
     
     // Check if this 'to' address matches any of our users' BSC deposit addresses
+    // OPTIMIZED QUERY: Select only needed fields
     const { data: addr, error } = await supabase
       .from('deposit_addresses')
-      .select('*')
+      .select('id, user_id, tron_address')
       .eq('network', 'bsc')
-      .eq('tron_address', to.toLowerCase()) // Reusing tron_address column for BSC for simplicity
+      .eq('tron_address', to.toLowerCase())
       .eq('is_used', false)
+      .limit(1)
       .maybeSingle();
 
     if (addr) {

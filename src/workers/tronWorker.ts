@@ -61,10 +61,9 @@ export class TronWorker {
 
   public start() {
     console.log('[TRON_WORKER] Starting persistent deposit listener...');
-    // 1. Regular Polling as fallback (every 15s)
-    this.timer = setInterval(() => this.checkDeposits(), 15000);
+    // Increased interval to 60s to reduce Supabase egress and TronGrid load
+    this.timer = setInterval(() => this.checkDeposits(), 60000);
 
-    // 2. Real-time Event Listening (if event server is available)
     this.listenToEvents();
   }
 
@@ -73,15 +72,9 @@ export class TronWorker {
       const contractAddr = config.tron.usdtContract;
       console.log(`[TRON_WORKER] Subscribing to USDT Transfer events for contract: ${contractAddr}`);
       
-      // TronWeb 6.x Event API usage
-      // Basic validation to avoid crashes if contract address is just a wallet
       if (contractAddr.startsWith('T') && contractAddr.length === 34) {
         try {
           const contract = await tronWeb.contract(USDT_ABI, contractAddr);
-          
-          // In TronWeb 6.x, we use the Event API or polling for stability
-          // Legacy .watch() is removed in many environments. 
-          // We'll use our handleEvent logic via Polling for maximum reliability
           console.log(`[TRON_WORKER] Event listener initialized for ${contractAddr}. Polling active.`);
         } catch (contractErr: any) {
           console.error(`[TRON_WORKER] Contract ABI error for ${contractAddr}:`, contractErr.message);
@@ -91,7 +84,8 @@ export class TronWorker {
       }
 
       // Fallback Polling (Primary in 6.x for reliability)
-      setInterval(() => this.pollEvents(), 30000);
+      // Increased to 2 minutes to save resources
+      setInterval(() => this.pollEvents(), 120000);
 
     } catch (err: any) {
       console.error('[TRON_WORKER] Failed to start event listener:', err.message);
@@ -100,8 +94,8 @@ export class TronWorker {
 
   private async pollEvents() {
     try {
-      // Use Trongrid Event API
-      const response = await fetch(`${config.tron.eventServer}/v1/contracts/${config.tron.usdtContract}/events?event_name=Transfer&limit=50&only_confirmed=true`);
+      // Use Trongrid Event API with reduced limit to save egress
+      const response = await fetch(`${config.tron.eventServer}/v1/contracts/${config.tron.usdtContract}/events?event_name=Transfer&limit=20&only_confirmed=true`);
       const json: any = await response.json();
       
       if (json.success && json.data) {
@@ -109,26 +103,29 @@ export class TronWorker {
           await this.handleEvent(event.result, event.transaction_id);
         }
       }
-    } catch (err) {
-      console.error('[TRON_WORKER] Polling error:', err);
+    } catch (err: any) {
+      if (!err.message?.includes('fetch failed') && !err.message?.includes('socket')) {
+        console.error('[TRON_WORKER] Polling error:', err.message);
+      }
     }
   }
 
   private async handleEvent(result: any, txHash: string) {
     const { to, value } = result;
-    // Handle both hex and base58 formats
     const toAddress = to.startsWith('41') ? tronWeb.address.fromHex(to) : to;
     const amount = Number(value) / 1000000;
 
+    // OPTIMIZED QUERY: Select only needed fields
     const { data: addr, error } = await supabase
       .from('deposit_addresses')
-      .select('*')
+      .select('id, user_id, tron_address')
       .eq('tron_address', toAddress)
       .eq('is_used', false)
+      .limit(1)
       .maybeSingle();
 
     if (addr) {
-      console.log(`[TRON_WORKER] Event-based Transfer detected: ${amount} USDT to ${toAddress}`);
+      console.log(`[TRON_WORKER] Event Transfer detected: ${amount} USDT to ${toAddress}`);
       await this.processAddress(addr);
     }
   }

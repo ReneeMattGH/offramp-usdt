@@ -56,6 +56,9 @@ export class PayoutWorker {
           .eq('id', order.id);
 
         try {
+          // Add a small delay between orders to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
           const result = await this.provider.initiatePayout(order, order.users, order.bank_accounts);
           
           if (result.status === 'SUCCESS') {
@@ -91,8 +94,12 @@ export class PayoutWorker {
             });
           }
         } catch (innerErr: any) {
-          console.error(`[PAYOUT_WORKER] Inner error for order ${order.id}:`, innerErr.message);
-          // Mark back to approved or failed if it's a persistent error
+          if (innerErr.message?.includes('ECONNRESET') || innerErr.message?.includes('fetch failed')) {
+            console.warn(`[PAYOUT_WORKER] Network reset detected. Retrying next cycle for order ${order.id}`);
+            // Don't update status, let it stay in APPROVED to retry next loop
+          } else {
+            console.error(`[PAYOUT_WORKER] Inner error for order ${order.id}:`, innerErr.message);
+          }
         }
       }
     } catch (err) {

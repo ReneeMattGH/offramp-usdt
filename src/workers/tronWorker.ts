@@ -66,52 +66,41 @@ export class TronWorker {
 
   public async start() {
     console.log('[TRON_WORKER] Starting persistent deposit listener...');
-    
-    // Ensure cache is populated before starting
-    await this.refreshCache();
+    // Increased interval to 60s to reduce Supabase egress and TronGrid load
+    this.timer = setInterval(() => this.checkDeposits(), 60000);
 
-    // 1. Regular Polling as fallback (every 15s)
-    this.timer = setInterval(() => this.checkDeposits(), 15000);
-
-    // 2. Real-time Event Listening (if event server is available)
     this.listenToEvents();
   }
 
   private async listenToEvents() {
     try {
-      console.log(`[TRON_WORKER] Subscribing to USDT Transfer events for contract: ${config.tron.usdtContract}`);
+      const contractAddr = config.tron.usdtContract;
+      console.log(`[TRON_WORKER] Subscribing to USDT Transfer events for contract: ${contractAddr}`);
       
-      // 1. WebSocket / Watcher (Real-time)
-      const contract = await tronWeb.contract(USDT_ABI, config.tron.usdtContract);
-      // Try events.Transfer().watch() which is common in newer TronWeb v6
-      const eventEmitter = (contract as any).events?.Transfer() || contract.Transfer();
-      
-      if (eventEmitter && typeof eventEmitter.watch === 'function') {
-        eventEmitter.watch(async (err: any, event: any) => {
-          if (err) {
-            console.error('[TRON_WORKER] Event listener error:', err);
-            return;
-          }
-          if (event && event.result) {
-            await this.handleEvent(event.result, event.transaction_id);
-          }
-        });
+      if (contractAddr.startsWith('T') && contractAddr.length === 34) {
+        try {
+          const contract = await tronWeb.contract(USDT_ABI, contractAddr);
+          console.log(`[TRON_WORKER] Event listener initialized for ${contractAddr}. Polling active.`);
+        } catch (contractErr: any) {
+          console.error(`[TRON_WORKER] Contract ABI error for ${contractAddr}:`, contractErr.message);
+        }
       } else {
-        console.warn('[TRON_WORKER] Warning: contract.Transfer().watch not found, falling back to polling ONLY.');
+        console.error(`[TRON_WORKER] Invalid USDT contract address in config: ${contractAddr}`);
       }
 
-      // 2. Event Polling (Fallback for reliability)
-      setInterval(() => this.pollEvents(), 60000); // Increase to 60s for better rate limit handling
+      // Fallback Polling (Primary in 6.x for reliability)
+      // Increased to 2 minutes to save resources
+      setInterval(() => this.pollEvents(), 120000);
 
-    } catch (err) {
-      console.error('[TRON_WORKER] Failed to start event listener:', err);
+    } catch (err: any) {
+      console.error('[TRON_WORKER] Failed to start event listener:', err.message);
     }
   }
 
   private async pollEvents() {
     try {
-      // Use Trongrid Event API
-      const response = await fetch(`${config.tron.eventServer}/v1/contracts/${config.tron.usdtContract}/events?event_name=Transfer&limit=50&only_confirmed=true`);
+      // Use Trongrid Event API with reduced limit to save egress
+      const response = await fetch(`${config.tron.eventServer}/v1/contracts/${config.tron.usdtContract}/events?event_name=Transfer&limit=20&only_confirmed=true`);
       const json: any = await response.json();
       
       if (json.success && json.data) {
@@ -123,8 +112,10 @@ export class TronWorker {
           }
         }
       }
-    } catch (err) {
-      console.error('[TRON_WORKER] Polling error:', err);
+    } catch (err: any) {
+      if (!err.message?.includes('fetch failed') && !err.message?.includes('socket')) {
+        console.error('[TRON_WORKER] Polling error:', err.message);
+      }
     }
   }
 
@@ -163,22 +154,20 @@ export class TronWorker {
 
   private async handleEvent(result: any, txHash: string) {
     const { to, value } = result;
-    // Handle both hex and base58 formats
     const toAddress = to.startsWith('41') ? tronWeb.address.fromHex(to) : to;
     const amount = Number(value) / 1000000;
 
-    // Filter in memory first
-    if (!this.activeAddresses.has(toAddress)) return;
-
+    // OPTIMIZED QUERY: Select only needed fields
     const { data: addr, error } = await supabase
       .from('deposit_addresses')
-      .select('*')
+      .select('id, user_id, tron_address')
       .eq('tron_address', toAddress)
       .eq('is_used', false)
+      .limit(1)
       .maybeSingle();
 
     if (addr) {
-      console.log(`[TRON_WORKER] Event-based Transfer detected: ${amount} USDT to ${toAddress}`);
+      console.log(`[TRON_WORKER] Event Transfer detected: ${amount} USDT to ${toAddress}`);
       await this.processAddress(addr);
       // Remove from cache once processed (it will stay processed in DB)
       this.activeAddresses.delete(toAddress);

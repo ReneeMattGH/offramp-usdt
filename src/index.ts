@@ -23,6 +23,7 @@ import { authenticate } from './middleware/authMiddleware.js';
 import { adminAuth } from './middleware/adminAuth.js';
 import walletService from './services/walletService.js';
 import exchangeService from './services/exchangeService.js';
+import supabase from './utils/supabase.js';
 
 const app = express();
 const server = createServer(app);
@@ -34,6 +35,26 @@ wsService.init(server);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+// Health Check
+app.get('/health', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('system_settings').select('id').limit(1).maybeSingle();
+    if (error) throw error;
+    res.json({ 
+      status: 'ok', 
+      db: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    res.status(503).json({ 
+      status: 'degraded', 
+      db: 'error', 
+      message: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Middleware

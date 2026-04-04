@@ -17,11 +17,13 @@ export class WalletController extends BaseController {
 
   async getBalance(req: AuthRequest, res: Response) {
     try {
+      console.log(`[WALLET_CONTROLLER] Balance request for user: ${req.user?.id}`);
       if (!req.user) return this.unauthorized(res);
 
       const balance = await walletService.getBalance(req.user.id);
       return this.ok(res, balance);
     } catch (error: any) {
+      console.error('[WALLET_CONTROLLER] Balance error:', error);
       return this.fail(res, error);
     }
   }

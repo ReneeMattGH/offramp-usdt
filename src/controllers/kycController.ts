@@ -44,6 +44,18 @@ export class KycController extends BaseController {
       return this.fail(res, err);
     }
   }
+
+  async resetKyc(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user) return this.unauthorized(res);
+      const userId = req.user.id;
+      const result = await kycService.resetKyc(userId, req.ip || null);
+      return this.ok(res, result);
+    } catch (err: any) {
+      console.error('KYC reset failed:', err);
+      return this.clientError(res, err.message);
+    }
+  }
 }
 
 export const kycController = KycController.getInstance();

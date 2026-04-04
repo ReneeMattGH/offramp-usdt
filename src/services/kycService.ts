@@ -18,7 +18,7 @@ export class KycService {
   }
 
   async submitKyc(userId: string, data: any, ipAddress: string | null, file?: any) {
-    let { aadhaar_number, full_name, dob } = data;
+    let { aadhaar_number, full_name, dob, phone_number } = data;
 
     if (aadhaar_number) {
       aadhaar_number = aadhaar_number.toString().replace(/\D/g, '');
@@ -84,6 +84,8 @@ export class KycService {
         aadhaar_number: aadhaar_number,
         aadhaar_photo_url: documentUrl,
         account_holder_name: full_name, // Mapping full_name here
+        phone: phone_number, // Added phone_number storage
+        phone_number: phone_number,
         kyc_provider: 'manual',
         updated_at: new Date().toISOString()
       })
@@ -132,6 +134,49 @@ export class KycService {
     
     if (error) throw error;
     return data;
+  }
+
+  async resetKyc(userId: string, ipAddress: string | null) {
+    // 1. Update users table, clearing all KYC related fields
+    const { error: userError } = await supabase
+      .from('users')
+      .update({
+        kyc_status: 'not_submitted', // Use 'not_submitted' for enum compatibility
+        aadhaar_number: null,
+        aadhaar_photo_url: null,
+        phone: null,
+        phone_number: null,
+        kyc_verified_at: null,
+        kyc_rejection_reason: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (userError) {
+      console.error('[KYC_SERVICE] User reset error:', userError);
+      throw userError;
+    }
+
+    // 2. Delete existing records from kyc_records
+    const { error: deleteError } = await supabase
+      .from('kyc_records')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      console.error('[KYC_SERVICE] KYC record delete error:', deleteError);
+      throw deleteError;
+    }
+
+    // 3. Log the audit
+    await auditService.log('user', userId, 'KYC_RESET', userId, {
+      message: 'User started over KYC process'
+    }, ipAddress);
+
+    return {
+      success: true,
+      message: 'KYC data cleared successfully'
+    };
   }
 }
 

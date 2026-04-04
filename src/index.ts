@@ -7,7 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config from './config/index.js';
-import authController from './controllers/authController.js';
+import generalAuthRouter from './routes/auth.routes.js';
 import walletController from './controllers/walletController.js';
 import exchangeController from './controllers/exchangeController.js';
 import withdrawalController from './controllers/withdrawalController.js';
@@ -65,16 +65,8 @@ app.use(express.json());
 // Routes
 const apiRouter = express.Router();
 
-// Auth Routes
-const authRouter = express.Router();
-authRouter.post('/send-otp', authController.sendOTP.bind(authController));
-authRouter.post('/verify-otp', authController.verifyOTPOnly.bind(authController));
-authRouter.post('/signup', authController.signup.bind(authController));
-authRouter.post('/login', authController.login.bind(authController));
-authRouter.get('/me', authController.me.bind(authController));
-authRouter.post('/guest-login', authController.guestLogin.bind(authController));
-
-apiRouter.use('/auth', authRouter);
+// Auth Routes (Google + Email)
+apiRouter.use('/auth', generalAuthRouter);
 
 // Wallet Routes
 const walletRouter = express.Router();
@@ -109,6 +101,7 @@ apiRouter.use('/payout', payoutRouter);
 const kycRouter = express.Router();
 kycRouter.post('/verify-kyc', authenticate, upload.single('aadhaar_image'), kycController.submitKyc.bind(kycController));
 kycRouter.get('/status', authenticate, kycController.getStatus.bind(kycController));
+kycRouter.post('/reset', authenticate, kycController.resetKyc.bind(kycController));
 
 apiRouter.use('/kyc', kycRouter);
 

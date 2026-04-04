@@ -49,8 +49,13 @@ export class TronWorker {
   private static instance: TronWorker;
   private isProcessing: boolean = false;
   private timer: NodeJS.Timeout | null = null;
+  private activeAddresses: Set<string> = new Set();
 
-  private constructor() {}
+  private constructor() {
+    this.refreshCache();
+    // Refresh cache every 2 minutes
+    setInterval(() => this.refreshCache(), 120000);
+  }
 
   public static getInstance(): TronWorker {
     if (!TronWorker.instance) {
@@ -59,7 +64,7 @@ export class TronWorker {
     return TronWorker.instance;
   }
 
-  public start() {
+  public async start() {
     console.log('[TRON_WORKER] Starting persistent deposit listener...');
     // Increased interval to 60s to reduce Supabase egress and TronGrid load
     this.timer = setInterval(() => this.checkDeposits(), 60000);
@@ -100,7 +105,11 @@ export class TronWorker {
       
       if (json.success && json.data) {
         for (const event of json.data) {
-          await this.handleEvent(event.result, event.transaction_id);
+          const { to } = event.result;
+          const toAddress = to.startsWith('41') ? tronWeb.address.fromHex(to) : to;
+          if (this.activeAddresses.has(toAddress)) {
+            await this.handleEvent(event.result, event.transaction_id);
+          }
         }
       }
     } catch (err: any) {
@@ -108,6 +117,39 @@ export class TronWorker {
         console.error('[TRON_WORKER] Polling error:', err.message);
       }
     }
+  }
+
+  private async refreshCache() {
+    try {
+      // Find unused addresses. We use a simpler select first to avoid column-not-found errors if schema is out of sync
+      const { data, error } = await supabase
+        .from('deposit_addresses')
+        .select('*')
+        .eq('is_used', false);
+
+      if (error) throw error;
+
+      const newAddresses = new Set<string>();
+      if (data) {
+        data.forEach((addr: any) => {
+          // If we have a network column, and it's bsc, don't include it in Tron worker
+          if (addr.network && addr.network === 'bsc') return;
+          
+          if (addr.tron_address) {
+            newAddresses.add(addr.tron_address);
+          }
+        });
+      }
+      
+      this.activeAddresses = newAddresses;
+      console.log(`[TRON_WORKER] Cache refreshed: ${this.activeAddresses.size} active Tron addresses`);
+    } catch (err) {
+      console.error('[TRON_WORKER] Failed to refresh address cache:', err);
+    }
+  }
+
+  public addActiveAddress(address: string) {
+    this.activeAddresses.add(address);
   }
 
   private async handleEvent(result: any, txHash: string) {
@@ -127,6 +169,8 @@ export class TronWorker {
     if (addr) {
       console.log(`[TRON_WORKER] Event Transfer detected: ${amount} USDT to ${toAddress}`);
       await this.processAddress(addr);
+      // Remove from cache once processed (it will stay processed in DB)
+      this.activeAddresses.delete(toAddress);
     }
   }
 

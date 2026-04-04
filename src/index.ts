@@ -15,6 +15,7 @@ import payoutController from './controllers/payoutController.js';
 import adminController from './controllers/adminController.js';
 import referralController from './controllers/referralController.js';
 import { kycController } from './controllers/kycController.js';
+import bankAccountController from './controllers/bankAccountController.js';
 import tronWorker from './workers/tronWorker.js';
 import payoutWorker from './workers/payoutWorker.js';
 import withdrawalWorker from './workers/withdrawalWorker.js';
@@ -111,6 +112,14 @@ kycRouter.get('/status', authenticate, kycController.getStatus.bind(kycControlle
 
 apiRouter.use('/kyc', kycRouter);
 
+// Bank Account Routes
+const bankRouter = express.Router();
+bankRouter.get('/my', authenticate, bankAccountController.listMyAccounts.bind(bankAccountController));
+bankRouter.post('/', authenticate, bankAccountController.addAccount.bind(bankAccountController));
+bankRouter.delete('/:id', authenticate, bankAccountController.deleteAccount.bind(bankAccountController));
+
+apiRouter.use('/bank', bankRouter);
+
 // Referral Routes
 const referralRouter = express.Router();
 referralRouter.get('/stats', authenticate, referralController.getStats.bind(referralController));
@@ -120,6 +129,12 @@ apiRouter.use('/referral', referralRouter);
 // Admin Routes
 const adminRouter = express.Router();
 adminRouter.post('/login', adminController.login.bind(adminController));
+adminRouter.get('/me', adminAuth, adminController.me.bind(adminController));
+adminRouter.post('/update-credentials', adminAuth, adminController.updateMyCredentials.bind(adminController));
+adminRouter.post('/add-admin', adminAuth, adminController.addAdmin.bind(adminController));
+adminRouter.get('/list', adminAuth, adminController.listAllAdmins.bind(adminController));
+adminRouter.post('/:id/update', adminAuth, adminController.updateOtherAdmin.bind(adminController));
+adminRouter.delete('/:id', adminAuth, adminController.deleteOtherAdmin.bind(adminController));
 adminRouter.get('/dashboard', adminAuth, adminController.getDashboard.bind(adminController));
 adminRouter.get('/kyc', adminAuth, adminController.getKycList.bind(adminController));
 adminRouter.post('/kyc/:id/approve', adminAuth, adminController.approveKyc.bind(adminController));
@@ -235,8 +250,8 @@ const startServer = async () => {
 
     // 1. Start Persistent Workers (Start by default unless explicitly disabled)
     if (process.env.SKIP_WORKERS !== 'true') {
-      tronWorker.start();
-      bscService.startListening();
+      await tronWorker.start();
+      await bscService.startListening();
       payoutWorker.start();
       withdrawalWorker.start();
       console.log('✅ Background workers started');

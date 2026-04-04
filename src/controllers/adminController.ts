@@ -14,7 +14,7 @@ const updateStatusSchema = z.object({
 });
 
 const updateRateSchema = z.object({
-  spreadPercent: z.number().min(0).max(100),
+  spreadPercent: z.number().min(-100).max(100),
 });
 
 const manualCreditSchema = z.object({
@@ -25,6 +25,17 @@ const manualCreditSchema = z.object({
 
 const freezeSchema = z.object({
   frozen: z.boolean(),
+});
+
+const updateAdminSchema = z.object({
+  username: z.string().optional(),
+  password: z.string().min(6).optional(),
+});
+
+const addAdminSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  role: z.enum(['superadmin', 'admin', 'staff']).default('admin'),
 });
 
 export interface AdminRequest extends Request {
@@ -44,7 +55,80 @@ export class AdminController extends BaseController {
       const result = await adminService.login(username, password);
       return this.ok(res, result);
     } catch (error: any) {
-      return this.fail(res, error);
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async me(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const data = await adminService.getAdminMe(req.admin.id);
+      return this.ok(res, data);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async updateMyCredentials(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const parsed = updateAdminSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+      
+      const { username, password } = parsed.data;
+      const result = await adminService.updateAdminCredentials(req.admin.id, username, password);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async addAdmin(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const parsed = addAdminSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+
+      const { username, password, role } = parsed.data;
+      const result = await adminService.createAdmin(username, password, role, req.admin.id);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async listAllAdmins(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const data = await adminService.listAdmins(req.admin.id);
+      return this.ok(res, data);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async updateOtherAdmin(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const id = req.params.id as string;
+      const parsed = updateAdminSchema.safeParse(req.body);
+      if (!parsed.success) return this.clientError(res, parsed.error.issues[0].message);
+
+      const result = await adminService.updateOtherAdmin(req.admin.id, id, parsed.data);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
+    }
+  }
+
+  async deleteOtherAdmin(req: AdminRequest, res: Response) {
+    try {
+      if (!req.admin) return this.unauthorized(res);
+      const id = req.params.id as string;
+      const result = await adminService.deleteAdmin(req.admin.id, id);
+      return this.ok(res, result);
+    } catch (error: any) {
+      return this.fail(res, error.message || error);
     }
   }
 

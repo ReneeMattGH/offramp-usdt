@@ -1,0 +1,174 @@
+{
+  "project": "Offramp-USDT Admin API",
+  "base_url": "/api/admin",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/me",
+      "description": "Get profile data for the currently logged-in admin.",
+      "authentication": "Bearer JWT Token",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "data": {
+            "id": "uuid-string",
+            "username": "admin_user",
+            "role": "superadmin"
+          }
+        },
+        "401": {
+          "status": "fail",
+          "message": "Unauthorized"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/update-credentials",
+      "description": "Update the username or password for the currently authenticated admin account.",
+      "authentication": "Bearer JWT Token",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "username": "new_username",
+          "password": "new_secure_password"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "message": "Credentials updated",
+          "admin": {
+            "id": "uuid-string",
+            "username": "new_username",
+            "role": "superadmin"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/add-admin",
+      "description": "Create a new admin user account. Restricted to superadmins.",
+      "authentication": "Bearer JWT Token (Superadmin only)",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "username": "new_admin_username",
+          "password": "new_admin_password",
+          "role": "admin"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "admin": {
+            "id": "new-uuid-string",
+            "username": "new_admin_username",
+            "role": "admin"
+          }
+        },
+        "403": {
+          "status": "error",
+          "message": "Permission denied"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/list",
+      "description": "List all administrative users excluding the current requester.",
+      "authentication": "Bearer JWT Token (Superadmin only)",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "data": [
+            {
+              "id": "uuid-string",
+              "username": "another_admin",
+              "role": "admin",
+              "created_at": "2024-03-20T10:00:00Z"
+            }
+          ]
+        },
+        "403": {
+          "status": "error",
+          "message": "Permission denied"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/:id/update",
+      "description": "Update any admin user's credentials using their ID.",
+      "authentication": "Bearer JWT Token (Superadmin only)",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>",
+          "Content-Type": "application/json"
+        },
+        "params": {
+          "id": "target-admin-uuid"
+        },
+        "body": {
+          "username": "new_username",
+          "password": "new_password"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "admin": {
+            "id": "target-admin-uuid",
+            "username": "new_username",
+            "role": "admin"
+          }
+        },
+        "403": {
+          "status": "error",
+          "message": "Permission denied"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/:id",
+      "description": "Delete an administrative account.",
+      "authentication": "Bearer JWT Token (Superadmin only)",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <token>"
+        },
+        "params": {
+          "id": "target-admin-uuid"
+        }
+      },
+      "responses": {
+        "200": {
+          "status": "success",
+          "message": "Admin account deleted"
+        },
+        "403": {
+          "status": "error",
+          "message": "Permission denied"
+        }
+      }
+    }
+  ]
+}

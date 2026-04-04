@@ -17,12 +17,17 @@ export class BSCService {
   private static instance: BSCService;
   private provider: ethers.JsonRpcProvider;
   private contract: ethers.Contract;
+  private activeAddresses: Set<string> = new Set();
+  private lastCacheRefresh: number = 0;
   private isProcessing: boolean = false;
   private lastCheckedBlock: number = 0;
 
   private constructor() {
     this.provider = new ethers.JsonRpcProvider(BSC_RPC);
     this.contract = new ethers.Contract(BSC_USDT_CONTRACT, USDT_ABI, this.provider);
+    this.refreshCache();
+    // Refresh cache every 2 minutes
+    setInterval(() => this.refreshCache(), 120000);
   }
 
   public static getInstance(): BSCService {
@@ -44,6 +49,37 @@ export class BSCService {
 
     // Significant increase in interval to 2 minutes to prevent egress and RPC limits
     setInterval(() => this.pollEvents(), 120000);
+  }
+
+  private async refreshCache() {
+    try {
+      const { data, error } = await supabase
+        .from('deposit_addresses')
+        .select('tron_address')
+        .eq('network', 'bsc')
+        .eq('is_used', false);
+
+      if (error) throw error;
+
+      const newAddresses = new Set<string>();
+      if (data) {
+        data.forEach(addr => {
+          if (addr.tron_address) {
+            newAddresses.add(addr.tron_address.toLowerCase());
+          }
+        });
+      }
+      
+      this.activeAddresses = newAddresses;
+      this.lastCacheRefresh = Date.now();
+      console.log(`[BSC_SERVICE] Cache refreshed: ${this.activeAddresses.size} active BSC addresses`);
+    } catch (err) {
+      console.error('[BSC_SERVICE] Failed to refresh address cache:', err);
+    }
+  }
+
+  public addActiveAddress(address: string) {
+    this.activeAddresses.add(address.toLowerCase());
   }
 
   private async pollEvents() {
@@ -69,7 +105,10 @@ export class BSCService {
       for (const event of events) {
         if ('args' in event && event.args) {
           const [from, to, value] = event.args;
-          await this.handleTransfer(from, to, value, event.transactionHash);
+          // Filter in memory first
+          if (this.activeAddresses.has(to.toLowerCase())) {
+            await this.handleTransfer(from, to, value, event.transactionHash);
+          }
         }
       }
 

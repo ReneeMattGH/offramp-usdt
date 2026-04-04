@@ -1,0 +1,475 @@
+{
+    "info": {
+        "name": "Offramp USDT APIs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000/api"
+        },
+        {
+            "key": "userToken",
+            "value": ""
+        },
+        {
+            "key": "adminToken",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "Auth",
+                    "item": [
+                        {
+                            "name": "Send OTP",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/send-otp", "host": ["{{baseUrl}}"], "path": ["auth", "send-otp"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+919876543210\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "Verify OTP",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["auth", "verify-otp"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+919876543210\",\n  \"otp\": \"123456\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "Signup",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/signup", "host": ["{{baseUrl}}"], "path": ["auth", "signup"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+919876543210\",\n  \"otp\": \"123456\",\n  \"accountHolderName\": \"John Doe\",\n  \"accountNumber\": \"1234567890\",\n  \"ifscCode\": \"SBIN0000000\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "Login",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+919876543210\",\n  \"otp\": \"123456\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "Guest Login",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/guest-login", "host": ["{{baseUrl}}"], "path": ["auth", "guest-login"] },
+                                "body": { "mode": "raw", "raw": "{}" }
+                            }
+                        },
+                        {
+                            "name": "Me",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Wallet",
+                    "item": [
+                        {
+                            "name": "Balance",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/wallet/balance", "host": ["{{baseUrl}}"], "path": ["wallet", "balance"] }
+                            }
+                        },
+                        {
+                            "name": "Generate Address",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/wallet/generate-address", "host": ["{{baseUrl}}"], "path": ["wallet", "generate-address"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"network\": \"trc20\"\n}" }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Exchange",
+                    "item": [
+                        {
+                            "name": "Rate",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": { "raw": "{{baseUrl}}/exchange/rate", "host": ["{{baseUrl}}"], "path": ["exchange", "rate"] }
+                            }
+                        },
+                        {
+                            "name": "My Orders",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/exchange/orders", "host": ["{{baseUrl}}"], "path": ["exchange", "orders"] }
+                            }
+                        },
+                        {
+                            "name": "Create Order",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/exchange/create-order", "host": ["{{baseUrl}}"], "path": ["exchange", "create-order"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"amount\": 100\n}" }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Withdrawal",
+                    "item": [
+                        {
+                            "name": "Request Withdrawal",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/withdrawal", "host": ["{{baseUrl}}"], "path": ["withdrawal"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"address\": \"TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\",\n  \"network\": \"trc20\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "My Withdrawals",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/withdrawal/my", "host": ["{{baseUrl}}"], "path": ["withdrawal", "my"] }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Payout",
+                    "item": [
+                        {
+                            "name": "Request Payout",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/payout", "host": ["{{baseUrl}}"], "path": ["payout"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"bank_account_id\": \"b83c5eb2-2b6d-47be-9856-11f81d11ff31\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "My Payouts",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/payout/my", "host": ["{{baseUrl}}"], "path": ["payout", "my"] }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "KYC",
+                    "item": [
+                        {
+                            "name": "Verify KYC",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/kyc/verify-kyc", "host": ["{{baseUrl}}"], "path": ["kyc", "verify-kyc"] },
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        { "key": "aadhaar_image", "type": "file", "src": [] }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Status",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/kyc/status", "host": ["{{baseUrl}}"], "path": ["kyc", "status"] }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Bank",
+                    "item": [
+                        {
+                            "name": "My Banks",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/bank/my", "host": ["{{baseUrl}}"], "path": ["bank", "my"] }
+                            }
+                        },
+                        {
+                            "name": "Add Bank",
+                            "request": {
+                                "method": "POST",
+                                "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/bank", "host": ["{{baseUrl}}"], "path": ["bank"] },
+                                "body": { "mode": "raw", "raw": "{\n  \"bank_name\": \"SBI\",\n  \"account_number\": \"123456789\",\n  \"ifsc\": \"SBIN0000000\",\n  \"account_holder_name\": \"John Doe\"\n}" }
+                            }
+                        },
+                        {
+                            "name": "Delete Bank",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/bank/1", "host": ["{{baseUrl}}"], "path": ["bank", "1"] }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Referral",
+                    "item": [
+                        {
+                            "name": "Stats",
+                            "request": {
+                                "method": "GET",
+                                "header": [ { "key": "Authorization", "value": "Bearer {{userToken}}" } ],
+                                "url": { "raw": "{{baseUrl}}/referral/stats", "host": ["{{baseUrl}}"], "path": ["referral", "stats"] }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/login", "host": ["{{baseUrl}}"], "path": ["admin", "login"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}" }
+                    }
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/me", "host": ["{{baseUrl}}"], "path": ["admin", "me"] }
+                    }
+                },
+                {
+                    "name": "Update Credentials",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/update-credentials", "host": ["{{baseUrl}}"], "path": ["admin", "update-credentials"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"newpassword123\"\n}" }
+                    }
+                },
+                {
+                    "name": "Add Admin",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/add-admin", "host": ["{{baseUrl}}"], "path": ["admin", "add-admin"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"email\": \"newadmin@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"admin\"\n}" }
+                    }
+                },
+                {
+                    "name": "List Admins",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/list", "host": ["{{baseUrl}}"], "path": ["admin", "list"] }
+                    }
+                },
+                {
+                    "name": "Update Admin Role",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/1/update", "host": ["{{baseUrl}}"], "path": ["admin", "1", "update"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"role\": \"superadmin\"\n}" }
+                    }
+                },
+                {
+                    "name": "Delete Admin",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/1", "host": ["{{baseUrl}}"], "path": ["admin", "1"] }
+                    }
+                },
+                {
+                    "name": "Dashboard",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/dashboard", "host": ["{{baseUrl}}"], "path": ["admin", "dashboard"] }
+                    }
+                },
+                {
+                    "name": "KYC List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/kyc", "host": ["{{baseUrl}}"], "path": ["admin", "kyc"] }
+                    }
+                },
+                {
+                    "name": "Approve KYC",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/kyc/1/approve", "host": ["{{baseUrl}}"], "path": ["admin", "kyc", "1", "approve"] }
+                    }
+                },
+                {
+                    "name": "Reject KYC",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/kyc/1/reject", "host": ["{{baseUrl}}"], "path": ["admin", "kyc", "1", "reject"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Document unclear\"\n}" }
+                    }
+                },
+                {
+                    "name": "Deposits List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/deposits", "host": ["{{baseUrl}}"], "path": ["admin", "deposits"] }
+                    }
+                },
+                {
+                    "name": "Approve Deposit",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/deposits/TX_HASH/approve", "host": ["{{baseUrl}}"], "path": ["admin", "deposits", "TX_HASH", "approve"] }
+                    }
+                },
+                {
+                    "name": "Manual Credit",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/manual-credit", "host": ["{{baseUrl}}"], "path": ["admin", "manual-credit"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"user_id\": \"USER_UUID_HERE\",\n  \"amount\": 100,\n  \"currency\": \"USDT\"\n}" }
+                    }
+                },
+                {
+                    "name": "Orders List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/orders", "host": ["{{baseUrl}}"], "path": ["admin", "orders"] }
+                    }
+                },
+                {
+                    "name": "Update Order Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/orders/1/status", "host": ["{{baseUrl}}"], "path": ["admin", "orders", "1", "status"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"status\": \"completed\"\n}" }
+                    }
+                },
+                {
+                    "name": "Users List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin", "users"] }
+                    }
+                },
+                {
+                    "name": "Freeze User",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/users/1/freeze", "host": ["{{baseUrl}}"], "path": ["admin", "users", "1", "freeze"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"frozen\": true\n}" }
+                    }
+                },
+                {
+                    "name": "Withdrawals List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/withdrawals", "host": ["{{baseUrl}}"], "path": ["admin", "withdrawals"] }
+                    }
+                },
+                {
+                    "name": "Approve Withdrawal",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/withdrawals/1/approve", "host": ["{{baseUrl}}"], "path": ["admin", "withdrawals", "1", "approve"] }
+                    }
+                },
+                {
+                    "name": "Reject Withdrawal",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/withdrawals/1/reject", "host": ["{{baseUrl}}"], "path": ["admin", "withdrawals", "1", "reject"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Suspicious activity\"\n}" }
+                    }
+                },
+                {
+                    "name": "Payouts List",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/payouts", "host": ["{{baseUrl}}"], "path": ["admin", "payouts"] }
+                    }
+                },
+                {
+                    "name": "Approve Payout",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/payouts/1/approve", "host": ["{{baseUrl}}"], "path": ["admin", "payouts", "1", "approve"] }
+                    }
+                },
+                {
+                    "name": "Reject Payout",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/payouts/1/reject", "host": ["{{baseUrl}}"], "path": ["admin", "payouts", "1", "reject"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Invalid bank details\"\n}" }
+                    }
+                },
+                {
+                    "name": "Settings Rate",
+                    "request": {
+                        "method": "POST",
+                        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/settings/rate", "host": ["{{baseUrl}}"], "path": ["admin", "settings", "rate"] },
+                        "body": { "mode": "raw", "raw": "{\n  \"usdt_rate\": 88.50,\n  \"spread\": 2.0\n}" }
+                    }
+                },
+                {
+                    "name": "Audit Logs",
+                    "request": {
+                        "method": "GET",
+                        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+                        "url": { "raw": "{{baseUrl}}/admin/audit", "host": ["{{baseUrl}}"], "path": ["admin", "audit"] }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -29,6 +29,7 @@ export class KycController extends BaseController {
       );
       return this.ok(res, result);
     } catch (err: any) {
+      console.error('KYC submission failed:', err);
       return this.clientError(res, err.message);
     }
   }

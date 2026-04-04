@@ -9,10 +9,10 @@ import crypto from 'crypto';
 import referralService from '../services/referralService.js';
 
 const signupSchema = z.object({
-  accountHolderName: z.string().min(2),
+  accountHolderName: z.string().optional(),
   phoneNumber: z.string().min(10),
-  accountNumber: z.string().min(8),
-  ifscCode: z.string().length(11),
+  accountNumber: z.string().optional(),
+  ifscCode: z.string().optional(),
   otp: z.string().length(6),
   referralCode: z.string().optional(),
 });

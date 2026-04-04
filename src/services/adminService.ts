@@ -64,6 +64,144 @@ export class AdminService {
     }
   }
 
+  async getAdminMe(adminId: string) {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id, username, role')
+      .eq('id', adminId)
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateAdminCredentials(adminId: string, username?: string, password?: string) {
+    const updates: any = {};
+    if (username) updates.username = username;
+    if (password) {
+      updates.password_hash = await bcrypt.hash(password, 10);
+    }
+    
+    if (Object.keys(updates).length === 0) return { success: false, message: 'No updates provided' };
+
+    const { data, error } = await supabase
+      .from('admins')
+      .update(updates)
+      .eq('id', adminId)
+      .select('id, username, role')
+      .single();
+
+    if (error) throw error;
+    await this.logAction(adminId, 'UPDATE_CREDENTIALS', 'admin', adminId, { updatedFields: Object.keys(updates) });
+    return { success: true, admin: data };
+  }
+
+  async createAdmin(username: string, password: string, role: string, requesterAdminId: string) {
+    // Check requester role
+    const { data: requester } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', requesterAdminId)
+      .single();
+    
+    if (!requester || requester.role !== 'superadmin') {
+      throw new Error('Unauthorized: Only super admins can create new admins');
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const { data, error } = await supabase
+      .from('admins')
+      .insert({
+        id: uuidv4(),
+        username,
+        password_hash,
+        role: role || 'admin',
+        created_at: new Date().toISOString()
+      })
+      .select('id, username, role')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') throw new Error('Username already exists');
+      throw error;
+    }
+
+    await this.logAction(requesterAdminId, 'CREATE_ADMIN', 'admin', data.id, { username, role });
+    return { success: true, admin: data };
+  }
+
+  async listAdmins(requesterAdminId: string) {
+    const { data: requester } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', requesterAdminId)
+      .single();
+    
+    if (!requester || requester.role !== 'superadmin') {
+      throw new Error('Permission denied');
+    }
+
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id, username, role, created_at')
+      .neq('id', requesterAdminId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  async updateOtherAdmin(requesterAdminId: string, targetAdminId: string, updates: { username?: string, password?: string }) {
+    const { data: requester } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', requesterAdminId)
+      .single();
+    
+    if (!requester || requester.role !== 'superadmin') {
+      throw new Error('Permission denied');
+    }
+
+    const updatePayload: any = {};
+    if (updates.username) updatePayload.username = updates.username;
+    if (updates.password) {
+      updatePayload.password_hash = await bcrypt.hash(updates.password, 10);
+    }
+
+    if (Object.keys(updatePayload).length === 0) throw new Error('No updates provided');
+
+    const { data, error } = await supabase
+      .from('admins')
+      .update(updatePayload)
+      .eq('id', targetAdminId)
+      .select('id, username, role')
+      .single();
+    
+    if (error) throw error;
+    await this.logAction(requesterAdminId, 'SUPERADMIN_UPDATE_ADMIN', 'admin', targetAdminId, { fields: Object.keys(updatePayload) });
+    return { success: true, admin: data };
+  }
+
+  async deleteAdmin(requesterAdminId: string, targetAdminId: string) {
+    const { data: requester } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', requesterAdminId)
+      .single();
+    
+    if (!requester || requester.role !== 'superadmin') {
+      throw new Error('Permission denied');
+    }
+
+    const { error } = await supabase
+      .from('admins')
+      .delete()
+      .eq('id', targetAdminId);
+    
+    if (error) throw error;
+    await this.logAction(requesterAdminId, 'SUPERADMIN_DELETE_ADMIN', 'admin', targetAdminId);
+    return { success: true };
+  }
+
   async getDashboardData() {
     const treasuryAddress = config.treasuryAddress;
     const treasuryBalance = await tronService.getTreasuryBalance(treasuryAddress);
@@ -240,14 +378,16 @@ export class AdminService {
 
   async updateSystemSpread(spreadPercent: number, adminId: string) {
     const { error } = await supabase
-      .from('system_configs')
-      .upsert({ 
-        key: 'usdt_spread_percent', 
-        value: spreadPercent.toString(),
-        updated_at: new Date().toISOString()
-      });
+      .from('system_settings')
+      .update({ exchange_spread_percent: spreadPercent })
+      .eq('id', 1);
+
     if (error) throw error;
-    await this.logAction(adminId, 'UPDATE_SPREAD', 'system_config', 'usdt_spread_percent', { spreadPercent });
+    
+    // Also update local cache
+    await configService.loadConfig();
+
+    await this.logAction(adminId, 'UPDATE_SPREAD', 'system_settings', 'exchange_spread_percent', { spreadPercent });
     return { success: true };
   }
 

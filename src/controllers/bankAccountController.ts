@@ -7,17 +7,18 @@ export class BankAccountController extends BaseController {
   async addAccount(req: AuthRequest, res: Response) {
     try {
       if (!req.user) return this.unauthorized(res);
-      
-      const { account_number, ifsc_code, account_holder_name, is_primary } = req.body;
-      
-      if (!account_number || !ifsc_code || !account_holder_name) {
-        return this.clientError(res, 'Missing required fields: account_number, ifsc_code, account_holder_name');
+
+      const { account_number, ifsc_code, account_holder_name, bank_name, is_primary } = req.body;
+
+      if (!account_number || !ifsc_code || !account_holder_name || !bank_name) {
+        return this.clientError(res, 'Missing required fields: account_number, ifsc_code, account_holder_name, bank_name');
       }
 
       const account = await bankService.addBankAccount(req.user.id, {
         account_number,
         ifsc_code,
         account_holder_name,
+        bank_name,
         is_primary
       });
 
@@ -38,6 +39,21 @@ export class BankAccountController extends BaseController {
     }
   }
 
+  async deleteAccount(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user) return this.unauthorized(res);
+
+      const id = req.params.id as string;
+      if (!id) return this.clientError(res, 'Missing bank account id');
+
+      // Pass userId so only the owner can delete their own account
+      await bankService.deleteBankAccount(id, req.user.id);
+      return this.ok(res, { success: true, message: 'Bank account deleted' });
+    } catch (error: any) {
+      return this.fail(res, error.message);
+    }
+  }
+
   // Admin APIs
   async adminListAllAccounts(req: any, res: Response) {
     try {
@@ -52,7 +68,7 @@ export class BankAccountController extends BaseController {
     try {
       const { id } = req.params;
       const data = req.body;
-      
+
       const updated = await bankService.updateBankAccount(id, data);
       return this.ok(res, updated);
     } catch (error: any) {
